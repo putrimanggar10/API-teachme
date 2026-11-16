@@ -33,6 +33,9 @@ func Router(h Handler) *gin.Engine {
 	v1 := r.Group("/api/v1")
 
 	// --- Publik (tanpa token) ---
+	// Layar login: daftar guru & kelas untuk dropdown, lalu login.
+	v1.GET("/accounts", h.ListAccounts)
+	v1.GET("/accounts/:id/classes", h.AccountClasses)
 	v1.POST("/auth/login", h.Login)
 	v1.POST("/auth/refresh", h.Refresh)
 

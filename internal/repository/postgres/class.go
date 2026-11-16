@@ -75,6 +75,22 @@ func (r ClassRepo) Roster(ctx context.Context, classID uuid.UUID) ([]domain.User
 	return result, rows.Err()
 }
 
+// GetByID: ambil 1 kelas berdasarkan ID.
+func (r ClassRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Class, error) {
+	var c domain.Class
+	var grade, year sql.NullString
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT id, school_id, name, grade, academic_year, created_at
+		FROM classes WHERE id = $1`, id,
+	).Scan(&c.ID, &c.SchoolID, &c.Name, &grade, &year, &c.CreatedAt)
+	if err != nil {
+		return nil, translate(err)
+	}
+	c.Grade = nullStr(grade)
+	c.AcademicYear = nullStr(year)
+	return &c, nil
+}
+
 // IsTeacherAssigned: cek apakah guru berwenang atas kelas (untuk policy).
 func (r ClassRepo) IsTeacherAssigned(ctx context.Context, classID, teacherID uuid.UUID) (bool, error) {
 	var exists bool

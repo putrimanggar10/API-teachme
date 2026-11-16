@@ -54,3 +54,23 @@ func (r UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, erro
 		`SELECT `+userCols+` FROM users WHERE id=$1`, id)
 	return scanUser(row)
 }
+
+// ListTeachers: semua guru aktif (untuk dropdown pilih nama di layar login).
+func (r UserRepo) ListTeachers(ctx context.Context) ([]domain.User, error) {
+	rows, err := r.DB.QueryContext(ctx,
+		`SELECT `+userCols+` FROM users WHERE role='TEACHER' AND status='ACTIVE' ORDER BY name`)
+	if err != nil {
+		return nil, translate(err)
+	}
+	defer rows.Close()
+
+	result := make([]domain.User, 0)
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *u)
+	}
+	return result, rows.Err()
+}

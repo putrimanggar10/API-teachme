@@ -15,6 +15,61 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/accounts": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Daftar guru untuk dropdown \"pilih nama\" di layar login (publik)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/classes": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Kelas yang diajar seorang guru (untuk dropdown \"pilih kelas\" saat login, publik)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID guru (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "consumes": [
@@ -388,14 +443,18 @@ const docTemplate = `{
         "internal_delivery_http.loginInput": {
             "type": "object",
             "required": [
-                "password",
-                "username"
+                "account_id",
+                "class_id",
+                "password"
             ],
             "properties": {
-                "password": {
+                "account_id": {
                     "type": "string"
                 },
-                "username": {
+                "class_id": {
+                    "type": "string"
+                },
+                "password": {
                     "type": "string"
                 }
             }

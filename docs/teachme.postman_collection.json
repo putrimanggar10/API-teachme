@@ -1,14 +1,15 @@
 {
   "info": {
     "name": "TeachMe API (F01)",
-    "description": "Milestone F01: Auth, Pilih Kelas, Sesi + Join Code/QR.\n\nCara pakai:\n1. Pastikan server jalan di {{base_url}} (default http://localhost:8099).\n2. Jalankan '2. Login Guru' dulu -> access_token otomatis tersimpan.\n3. Jalankan '5. List Classes' -> class_id (Class 7B) otomatis tersimpan.\n4. Jalankan '7. Start Session' -> session_id + join_code otomatis tersimpan.\n5. Request lain tinggal Send.",
+    "description": "Milestone F01: Auth (pilih guru + password + pilih kelas), Pilih Kelas, Sesi + Join Code/QR.\n\nCara pakai (jalankan BERURUTAN):\n1. Pastikan server jalan di {{base_url}} (default http://localhost:8099).\n2. '1. List Accounts' -> teacher_id (Mr. Axel) otomatis tersimpan.\n3. '2. Account Classes' -> class_id (Class 7B) otomatis tersimpan.\n4. '3. Login Guru' -> access_token otomatis tersimpan.\n5. '8. Start Session' -> session_id + join_code tersimpan.\n6. Sisanya tinggal Send.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "base_url", "value": "http://localhost:8099" },
+    { "key": "teacher_id", "value": "" },
+    { "key": "class_id", "value": "" },
     { "key": "access_token", "value": "" },
     { "key": "refresh_token", "value": "" },
-    { "key": "class_id", "value": "" },
     { "key": "session_id", "value": "" },
     { "key": "join_code", "value": "" }
   ],
@@ -18,7 +19,7 @@
   },
   "item": [
     {
-      "name": "1. Health",
+      "name": "0. Health",
       "request": {
         "auth": { "type": "noauth" },
         "method": "GET",
@@ -27,7 +28,51 @@
       }
     },
     {
-      "name": "2. Login Guru",
+      "name": "1. List Accounts (dropdown nama guru)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const a = pm.response.json();",
+              "const t = Array.isArray(a) ? (a.find(x => x.name === 'Mr. Axel') || a[0]) : null;",
+              "if (t) { pm.collectionVariables.set('teacher_id', t.id); console.log('teacher =', t.name); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/accounts", "host": ["{{base_url}}"], "path": ["api", "v1", "accounts"] }
+      }
+    },
+    {
+      "name": "2. Account Classes (dropdown pilih kelas)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const a = pm.response.json();",
+              "const b = Array.isArray(a) ? (a.find(x => x.name === 'Class 7B') || a[0]) : null;",
+              "if (b) { pm.collectionVariables.set('class_id', b.id); console.log('class =', b.name); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/accounts/{{teacher_id}}/classes", "host": ["{{base_url}}"], "path": ["api", "v1", "accounts", "{{teacher_id}}", "classes"] }
+      }
+    },
+    {
+      "name": "3. Login Guru (nama + password + kelas)",
       "event": [
         {
           "listen": "test",
@@ -38,7 +83,7 @@
               "if (j.access_token) {",
               "  pm.collectionVariables.set('access_token', j.access_token);",
               "  pm.collectionVariables.set('refresh_token', j.refresh_token);",
-              "  console.log('Token tersimpan. Role:', j.roles);",
+              "  console.log('Login OK. Kelas aktif:', j.active_class && j.active_class.name);",
               "}"
             ]
           }
@@ -48,12 +93,12 @@
         "auth": { "type": "noauth" },
         "method": "POST",
         "header": [ { "key": "Content-Type", "value": "application/json" } ],
-        "body": { "mode": "raw", "raw": "{\n  \"username\": \"mr.axel\",\n  \"password\": \"guru123\"\n}" },
+        "body": { "mode": "raw", "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}" },
         "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"] }
       }
     },
     {
-      "name": "3. Refresh Token",
+      "name": "4. Refresh Token",
       "event": [
         {
           "listen": "test",
@@ -75,7 +120,7 @@
       }
     },
     {
-      "name": "4. Me (profil)",
+      "name": "5. Me (profil)",
       "request": {
         "method": "GET",
         "header": [],
@@ -83,20 +128,7 @@
       }
     },
     {
-      "name": "5. List Classes (pilih kelas)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const a = pm.response.json();",
-              "const b = Array.isArray(a) ? (a.find(x => x.name === 'Class 7B') || a[0]) : null;",
-              "if (b) { pm.collectionVariables.set('class_id', b.id); console.log('class_id =', b.name); }"
-            ]
-          }
-        }
-      ],
+      "name": "6. List Classes (kelas guru)",
       "request": {
         "method": "GET",
         "header": [],
@@ -104,7 +136,7 @@
       }
     },
     {
-      "name": "6. Class Roster (daftar siswa)",
+      "name": "7. Class Roster (daftar siswa)",
       "request": {
         "method": "GET",
         "header": [],
@@ -112,7 +144,7 @@
       }
     },
     {
-      "name": "7. Start Session (mulai kelas + kode)",
+      "name": "8. Start Session (mulai kelas + kode + QR)",
       "event": [
         {
           "listen": "test",
@@ -137,7 +169,7 @@
       }
     },
     {
-      "name": "8. Get Session (info sesi)",
+      "name": "9. Get Session (info sesi)",
       "request": {
         "method": "GET",
         "header": [],
@@ -145,7 +177,7 @@
       }
     },
     {
-      "name": "9. Session QR (gambar PNG)",
+      "name": "10. Session QR (gambar PNG)",
       "request": {
         "method": "GET",
         "header": [],
@@ -153,7 +185,7 @@
       }
     },
     {
-      "name": "10. End Session (akhiri)",
+      "name": "11. End Session (akhiri)",
       "request": {
         "method": "POST",
         "header": [],

@@ -13,16 +13,18 @@ import (
 // Bentuk input (request body)
 // ---------------------------------------------------------------------------
 
+// loginInput: guru pilih namanya (account_id), ketik password, pilih kelas.
 type loginInput struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	AccountID string `json:"account_id" binding:"required"`
+	Password  string `json:"password" binding:"required"`
+	ClassID   string `json:"class_id" binding:"required"`
 }
 
 type refreshInput struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// authResponse = bentuk balasan login/refresh (sesuai PAD API-01).
+// authResponse = bentuk balasan login/refresh.
 func authResponse(c *gin.Context, status int, r *usecase.AuthResult) {
 	c.JSON(status, gin.H{
 		"access_token":  r.AccessToken,
@@ -30,6 +32,7 @@ func authResponse(c *gin.Context, status int, r *usecase.AuthResult) {
 		"token_type":    "Bearer",
 		"expires_in":    r.ExpiresIn,
 		"user":          r.User,
+		"active_class":  r.ActiveClass, // kelas yang dipilih saat login (null saat refresh)
 		"roles":         []string{r.User.Role},
 	})
 }
@@ -49,7 +52,15 @@ func (h Handler) Login(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "INVALID", err.Error())
 		return
 	}
-	res, err := h.Auth.Login(c.Request.Context(), in.Username, in.Password)
+	accountID, ok := parseUUID(c, in.AccountID)
+	if !ok {
+		return
+	}
+	classID, ok := parseUUID(c, in.ClassID)
+	if !ok {
+		return
+	}
+	res, err := h.Auth.Login(c.Request.Context(), accountID, in.Password, classID)
 	if err != nil {
 		failErr(c, err)
 		return

@@ -15,7 +15,7 @@ var (
 	ErrNotFound           = errors.New("data tidak ditemukan")
 	ErrConflict           = errors.New("data duplikat atau bentrok")
 	ErrInvalid            = errors.New("data tidak valid")
-	ErrInvalidCredentials = errors.New("username atau password salah")
+	ErrInvalidCredentials = errors.New("nama guru atau password salah")
 	ErrForbidden          = errors.New("tidak punya hak akses")
 )
 
@@ -50,6 +50,8 @@ type User struct {
 type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	// ListTeachers: daftar guru (untuk dropdown "pilih nama" di layar login).
+	ListTeachers(ctx context.Context) ([]User, error)
 }
 
 // ---------------------------------------------------------------------------
@@ -74,4 +76,6 @@ type ClassRepository interface {
 	Roster(ctx context.Context, classID uuid.UUID) ([]User, error)
 	// IsTeacherAssigned: apakah guru berwenang atas kelas ini (untuk policy).
 	IsTeacherAssigned(ctx context.Context, classID, teacherID uuid.UUID) (bool, error)
+	// GetByID: ambil 1 kelas berdasarkan ID.
+	GetByID(ctx context.Context, id uuid.UUID) (*Class, error)
 }

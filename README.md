@@ -13,11 +13,13 @@ Dibangun dengan **Go + Gin + PostgreSQL**, pola **Clean Architecture**.
 
 | Bagian | Status |
 |--------|--------|
-| Login guru/siswa (JWT access + refresh) | ✅ |
-| Policy **teacher / student** (middleware role) | ✅ |
+| Login guru (pilih nama + password + pilih kelas) → JWT access + refresh | ✅ |
+| Policy **teacher / student** (middleware role + cek pengampu) | ✅ |
 | Database 45 tabel (schema resmi PAD) + seeder | ✅ |
-| Swagger UI | ✅ |
-| Guru pilih kelas, Generate Code + QR, Join/Leave | ⏳ (berikutnya) |
+| Guru pilih kelas + daftar siswa (roster) | ✅ |
+| Mulai sesi → **generate join code + QR (PNG)** → akhiri sesi | ✅ |
+| Swagger UI + Postman collection | ✅ |
+| Join/Leave siswa (pakai aplikasi lain) | ⏳ (berikutnya) |
 
 ## 🧱 Teknologi
 
@@ -79,16 +81,33 @@ Server: `http://localhost:8099` — Swagger UI: `http://localhost:8099/swagger/i
 | Metode | Path | Akses | Keterangan |
 |--------|------|-------|------------|
 | GET  | `/health` | publik | cek server hidup |
-| POST | `/api/v1/auth/login` | publik | login → access + refresh token |
+| GET  | `/api/v1/accounts` | publik | daftar guru (dropdown "pilih nama") |
+| GET  | `/api/v1/accounts/{id}/classes` | publik | kelas guru (dropdown "pilih kelas") |
+| POST | `/api/v1/auth/login` | publik | login: `account_id` + `password` + `class_id` → token |
 | POST | `/api/v1/auth/refresh` | publik | tukar refresh → access baru |
 | GET  | `/api/v1/me` | login | profil pengguna |
+| GET  | `/api/v1/classes` | guru | kelas yang diajar |
+| GET  | `/api/v1/classes/{id}/roster` | guru | daftar siswa kelas |
+| POST | `/api/v1/sessions` | guru | mulai sesi → `join_code` + `qr_payload` |
+| GET  | `/api/v1/sessions/{id}` | guru | info sesi |
+| GET  | `/api/v1/sessions/{id}/qr` | guru | gambar QR (PNG) |
+| POST | `/api/v1/sessions/{id}/end` | guru | akhiri sesi |
+
+### Alur login (sesuai layar Sign in)
+1. `GET /accounts` → tampilkan dropdown nama guru
+2. Guru pilih namanya → `GET /accounts/{id}/classes` → tampilkan dropdown kelas
+3. Guru isi password + pilih kelas → `POST /auth/login { account_id, password, class_id }`
+4. Dapat `access_token` + `active_class`. Lalu `POST /sessions` untuk memunculkan QR + kode.
 
 ## 👤 Akun contoh (hasil seeder)
 
-| Peran | Username | Password |
+| Peran | Nama (muncul di dropdown `/accounts`) | Password |
 |-------|----------|----------|
-| Guru  | `mr.axel`, `nova`, `sabo`, `vision` | `guru123` |
-| Siswa | `rifa`, `dimas`, `hana`, `maya`, `celine` | `siswa123` |
+| Guru  | Mr. Axel, Nova, Sabo, Vision | `guru123` |
+| Siswa | Rifa, Dimas, Hana, Maya, Celine | `siswa123` |
+
+> Login pakai `account_id` (didapat dari `GET /accounts`), bukan ketik nama manual.
+> Mr. Axel mengajar **Class 7A & 7B**; Class 7B berisi 5 siswa contoh.
 
 ## 🔐 Catatan keamanan
 

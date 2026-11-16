@@ -12,9 +12,10 @@ import (
 	"API-techme/internal/token"
 )
 
-// AuthResult = hasil login: data user + sepasang token.
+// AuthResult = hasil login: data user + sepasang token + kelas yang dipilih.
 type AuthResult struct {
 	User         *domain.User
+	ActiveClass  *domain.Class // kelas yang dipilih saat login
 	AccessToken  string
 	RefreshToken string
 	ExpiresIn    int // detik, masa berlaku access token
@@ -22,16 +23,21 @@ type AuthResult struct {
 
 // AuthService mengurus login, refresh token, dan ambil profil.
 type AuthService struct {
-	Users  domain.UserRepository
-	Tokens token.Manager
+	Users   domain.UserRepository
+	Classes domain.ClassRepository // untuk cek guru mengajar kelas yang dipilih
+	Tokens  token.Manager
 }
 
-// Login memverifikasi username+password, lalu menerbitkan access & refresh token.
-func (s AuthService) Login(ctx context.Context, username, password string) (*AuthResult, error) {
-	user, err := s.Users.GetByUsername(ctx, username)
+// ListTeachers: daftar guru untuk dropdown "pilih nama" di layar login.
+func (s AuthService) ListTeachers(ctx context.Context) ([]domain.User, error) {
+	return s.Users.ListTeachers(ctx)
+}
+
+// Login: GURU pilih namanya (accountID) + password + kelas yang diajar.
+// Validasi: password benar, role TEACHER, dan guru memang mengajar kelas itu.
+func (s AuthService) Login(ctx context.Context, accountID uuid.UUID, password string, classID uuid.UUID) (*AuthResult, error) {
+	user, err := s.Users.GetByID(ctx, accountID)
 	if err != nil {
-		// Supaya tidak membocorkan "username ada tapi password salah" vs "username tak ada",
-		// keduanya dipetakan ke error yang SAMA.
 		if err == domain.ErrNotFound {
 			return nil, domain.ErrInvalidCredentials
 		}
@@ -41,13 +47,36 @@ func (s AuthService) Login(ctx context.Context, username, password string) (*Aut
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	// bcrypt.CompareHashAndPassword membandingkan hash tersimpan dgn password yang diketik.
-	// Aman dari timing attack & tidak pernah mengembalikan password asli.
+	// Cocokkan password dengan hash (bcrypt). Aman & tidak mengembalikan password asli.
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	return s.issueTokens(user)
+	// Layar login papan ini khusus GURU.
+	if user.Role != domain.RoleTeacher {
+		return nil, domain.ErrForbidden
+	}
+
+	// Pastikan guru ini memang mengajar kelas yang dipilih.
+	ok, err := s.Classes.IsTeacherAssigned(ctx, classID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, domain.ErrForbidden
+	}
+
+	class, err := s.Classes.GetByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := s.issueTokens(user)
+	if err != nil {
+		return nil, err
+	}
+	res.ActiveClass = class
+	return res, nil
 }
 
 // Refresh menukar refresh token yang sah dengan access token baru.

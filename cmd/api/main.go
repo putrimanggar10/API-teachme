@@ -61,8 +61,9 @@ func main() {
 	// Rangkai: repository -> service -> handler.
 	h := httpdelivery.Handler{
 		Auth: usecase.AuthService{
-			Users:  postgres.UserRepo{DB: db},
-			Tokens: tokens,
+			Users:   postgres.UserRepo{DB: db},
+			Classes: postgres.ClassRepo{DB: db},
+			Tokens:  tokens,
 		},
 		Classes: usecase.ClassService{
 			Repo: postgres.ClassRepo{DB: db},
