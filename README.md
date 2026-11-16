@@ -1,112 +1,102 @@
-# Belajar Go CRUD — Kasir Mini
+# TeachMe API
 
-REST API kasir mini dengan **Gin + PostgreSQL**, pola **Clean Architecture**.
-Tiga entity: **Produk** (CRUD), **Pelanggan** (CRUD), dan **Penjualan** (checkout + baca).
-Dilengkapi **Swagger UI**.
+Backend **TeachMe** — aplikasi *class board* interaktif untuk **guru & siswa** (mirip IWB/Kahoot).
+Dibangun dengan **Go + Gin + PostgreSQL**, pola **Clean Architecture**.
 
-## Struktur
+> **Status:** proyek bertahap. Repo ini baru menyelesaikan **Milestone F01** —
+> *Authentication, Pilih Kelas, Sesi + Join Code/QR*. Fitur lain (quiz, whiteboard,
+> screen share, points, voting, realtime WebSocket) menyusul sesuai PAD TeachMe v2.
+
+---
+
+## ✨ Yang sudah jalan (F01)
+
+| Bagian | Status |
+|--------|--------|
+| Login guru/siswa (JWT access + refresh) | ✅ |
+| Policy **teacher / student** (middleware role) | ✅ |
+| Database 45 tabel (schema resmi PAD) + seeder | ✅ |
+| Swagger UI | ✅ |
+| Guru pilih kelas, Generate Code + QR, Join/Leave | ⏳ (berikutnya) |
+
+## 🧱 Teknologi
+
+- **Go** 1.27, **Gin** (HTTP framework)
+- **PostgreSQL** (driver `pgx`)
+- **JWT** (`golang-jwt/jwt/v5`) — token access + refresh
+- **bcrypt** — hashing password
+- **swaggo** — Swagger UI
+- UUID sebagai Primary Key
+
+## 📂 Struktur
 
 ```
-belajar-go-crud/
-├── cmd/api/main.go                         # composition root (rangkai semua)
+API-techme/
+├── cmd/
+│   ├── api/main.go          # composition root (rangkai semua)
+│   └── seed/main.go         # isi data contoh (sekolah, guru, siswa, kelas)
 ├── internal/
-│   ├── domain/models.go                    # entity + interface (kontrak)
-│   ├── usecase/services.go                 # aturan bisnis
-│   ├── usecase/services_test.go            # unit test tanpa DB
-│   ├── repository/postgres/repository.go   # implementasi SQL + transaksi checkout
-│   └── delivery/http/handlers.go           # routing + handler Gin + Swagger
-├── docs/openapi.json                       # kontrak OpenAPI (dibaca Swagger UI)
-├── migrations/001_init.sql                 # CREATE TABLE (4 tabel)
-├── .env.example
-└── go.mod
+│   ├── domain/models.go     # entity + interface (kontrak), tanpa Gin/SQL
+│   ├── token/jwt.go         # buat & verifikasi JWT
+│   ├── usecase/auth.go      # aturan bisnis: login, refresh, me
+│   ├── repository/postgres/ # implementasi SQL
+│   └── delivery/http/       # handler Gin, middleware (policy), routing
+├── migrations/001_init.sql  # schema PostgreSQL (45 tabel)
+├── docs/                    # Swagger (di-generate swag init)
+└── .env.example
 ```
 
 Arah dependency: `handler → usecase → interface domain ← repository postgres`.
-`main.go` yang merangkai semuanya.
 
-## 1. Siapkan database (sekali saja)
+## 🚀 Cara menjalankan
 
-Masuk ke psql sebagai admin lalu buat user + database:
+### 1. Prasyarat
+- Go 1.27+, PostgreSQL 13+
+- Buat database kosong bernama `teachme`
 
-```sql
-CREATE USER belajar WITH PASSWORD 'belajar123';
-CREATE DATABASE belajar_db OWNER belajar;
-```
-
-Jalankan migration dari folder root proyek (PowerShell):
+### 2. Buat tabel & isi data contoh
 
 ```powershell
-$env:PGPASSWORD="belajar123"
-psql -h localhost -U belajar -d belajar_db -v ON_ERROR_STOP=1 -f migrations/001_init.sql
-psql -h localhost -U belajar -d belajar_db -c "\dt"
+# jalankan migration (via psql) lalu seeder
+$env:DATABASE_URL="postgres://postgres:PASSWORD%23@localhost:5432/teachme?sslmode=disable"
+go run ./cmd/seed
 ```
+> Karakter `#` pada password ditulis `%23` di dalam URL.
 
-Harus muncul 4 tabel: `products`, `customers`, `sales`, `sale_items`.
-
-## 2. Install dependency & jalankan
+### 3. Nyalakan server (PowerShell)
 
 ```powershell
-go mod tidy
-$env:DATABASE_URL="postgres://belajar:belajar123@localhost:5432/belajar_db?sslmode=disable"
-$env:PORT="8080"
+$env:DATABASE_URL="postgres://postgres:PASSWORD%23@localhost:5432/teachme?sslmode=disable"
+$env:PORT="8099"
+$env:JWT_SECRET="ganti-dengan-secret-acak"
 go run ./cmd/api
 ```
 
-Biarkan terminal ini tetap jalan.
+Server: `http://localhost:8099` — Swagger UI: `http://localhost:8099/swagger/index.html`
 
-## 3. Endpoint
+## 🔌 Endpoint (F01)
 
-| Metode | Path                     | Hasil                 |
-|--------|--------------------------|-----------------------|
-| GET    | /health                  | 200                   |
-| POST   | /api/v1/products         | 201 / 400 / 409       |
-| GET    | /api/v1/products         | 200                   |
-| GET    | /api/v1/products/{id}    | 200 / 404             |
-| PUT    | /api/v1/products/{id}    | 200 / 404 / 409       |
-| DELETE | /api/v1/products/{id}    | 204 / 404 / 409       |
-| POST   | /api/v1/customers        | 201 / 400 / 409       |
-| GET    | /api/v1/customers        | 200                   |
-| GET    | /api/v1/customers/{id}   | 200 / 404             |
-| PUT    | /api/v1/customers/{id}   | 200 / 404 / 409       |
-| DELETE | /api/v1/customers/{id}   | 204 / 404 / 409       |
-| POST   | /api/v1/sales (checkout) | 201 / 400 / 404 / 409 |
-| GET    | /api/v1/sales            | 200                   |
-| GET    | /api/v1/sales/{id}       | 200 / 404             |
+| Metode | Path | Akses | Keterangan |
+|--------|------|-------|------------|
+| GET  | `/health` | publik | cek server hidup |
+| POST | `/api/v1/auth/login` | publik | login → access + refresh token |
+| POST | `/api/v1/auth/refresh` | publik | tukar refresh → access baru |
+| GET  | `/api/v1/me` | login | profil pengguna |
 
-Penjualan sengaja **tidak punya** PUT/DELETE supaya riwayat transaksi tetap utuh.
+## 👤 Akun contoh (hasil seeder)
 
-## 4. Swagger UI
+| Peran | Username | Password |
+|-------|----------|----------|
+| Guru  | `mr.axel`, `nova`, `sabo`, `vision` | `guru123` |
+| Siswa | `rifa`, `dimas`, `hana`, `maya`, `celine` | `siswa123` |
 
-Buka di browser (butuh internet untuk aset CDN):
+## 🔐 Catatan keamanan
 
-```
-http://localhost:8080/swagger/index.html
-```
+- Password disimpan sebagai **hash bcrypt**, tidak pernah plaintext.
+- `join_code` & token QR nanti disimpan sebagai **hash**, bukan nilai asli.
+- File `.env` (berisi password asli) **tidak** ikut di-commit (lihat `.gitignore`).
+- Proyek untuk pembelajaran; sebelum produksi tambahkan HTTPS, rate limit, isolasi tenant (school_id), dll.
 
-Kontrak mentah: `http://localhost:8080/openapi.json`.
+---
 
-## 5. Coba cepat (terminal lain)
-
-```powershell
-# buat produk
-curl -i -X POST http://localhost:8080/api/v1/products -H "Content-Type: application/json" -d "{\"name\":\"Kopi Susu\",\"sku\":\"KOPI-001\",\"price\":18000,\"stock\":20}"
-
-# buat pelanggan
-curl -i -X POST http://localhost:8080/api/v1/customers -H "Content-Type: application/json" -d "{\"name\":\"Budi\",\"email\":\"budi@example.com\"}"
-
-# checkout: beli 2 produk id 1 (stok berkurang jadi 18)
-curl -i -X POST http://localhost:8080/api/v1/sales -H "Content-Type: application/json" -d "{\"customer_id\":1,\"items\":[{\"product_id\":1,\"qty\":2}]}"
-```
-
-## 6. Test (tidak perlu DB)
-
-```powershell
-go test ./...
-```
-
-## Catatan
-
-Proyek ini untuk belajar, **belum siap produksi**. Sebelum produksi tambahkan:
-autentikasi (JWT), TLS, rate limit, CORS, structured logging, pagination,
-dan migration versioning. Perubahan stok manual sebaiknya pakai ledger
-(stock movement), bukan langsung mengganti angka lewat PUT.
+*Bagian dari sistem TeachMe (IWB Teacher APK · Student APK · Student Windows EXE). Backend by Sukma.*
