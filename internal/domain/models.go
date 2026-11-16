@@ -51,3 +51,27 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 }
+
+// ---------------------------------------------------------------------------
+// Class (kelas) + roster
+// ---------------------------------------------------------------------------
+
+// Class adalah entity kelas akademik (mis. "Class 7B").
+type Class struct {
+	ID           uuid.UUID `json:"id"`
+	SchoolID     uuid.UUID `json:"school_id"`
+	Name         string    `json:"name"`
+	Grade        *string   `json:"grade,omitempty"`
+	AcademicYear *string   `json:"academic_year,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// ClassRepository = kontrak penyimpanan kelas.
+type ClassRepository interface {
+	// ListForTeacher: kelas yang BOLEH diajar guru tsb (via teacher_class_assignments).
+	ListForTeacher(ctx context.Context, teacherID uuid.UUID) ([]Class, error)
+	// Roster: daftar siswa pada satu kelas.
+	Roster(ctx context.Context, classID uuid.UUID) ([]User, error)
+	// IsTeacherAssigned: apakah guru berwenang atas kelas ini (untuk policy).
+	IsTeacherAssigned(ctx context.Context, classID, teacherID uuid.UUID) (bool, error)
+}

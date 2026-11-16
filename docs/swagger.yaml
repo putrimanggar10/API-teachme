@@ -17,6 +17,13 @@ definitions:
     required:
     - refresh_token
     type: object
+  internal_delivery_http.startSessionInput:
+    properties:
+      class_id:
+        type: string
+    required:
+    - class_id
+    type: object
 info:
   contact: {}
   description: 'Backend TeachMe (class board). Milestone F01: Auth, Pilih Kelas, Sesi
@@ -78,6 +85,61 @@ paths:
       summary: Tukar refresh token dengan access token baru
       tags:
       - Auth
+  /api/v1/classes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Daftar kelas yang boleh diajar guru (untuk layar "pilih kelas")
+      tags:
+      - Classes
+  /api/v1/classes/{id}/roster:
+    get:
+      parameters:
+      - description: ID kelas (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Daftar siswa pada sebuah kelas (khusus guru pengampu)
+      tags:
+      - Classes
   /api/v1/me:
     get:
       produces:
@@ -98,6 +160,112 @@ paths:
       summary: Profil pengguna yang sedang login
       tags:
       - Auth
+  /api/v1/sessions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID kelas
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.startSessionInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mulai sesi kelas -> hasilkan join_code + qr_payload
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}:
+    get:
+      parameters:
+      - description: ID sesi (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Info sesi
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}/end:
+    post:
+      parameters:
+      - description: ID sesi (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Akhiri sesi (kode jadi tidak berlaku)
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}/qr:
+    get:
+      parameters:
+      - description: ID sesi (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Gambar QR untuk bergabung ke sesi (PNG)
+      tags:
+      - Sessions
 securityDefinitions:
   BearerAuth:
     in: header

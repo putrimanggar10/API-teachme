@@ -7,6 +7,7 @@ import (
 	swaggerfiles "github.com/swaggo/files"
 	ginswagger "github.com/swaggo/gin-swagger"
 
+	"API-techme/internal/domain"
 	"API-techme/internal/token"
 	"API-techme/internal/usecase"
 )
@@ -14,8 +15,10 @@ import (
 // Handler menampung semua service + util yang dibutuhkan endpoint.
 // main.go yang mengisinya (dependency injection).
 type Handler struct {
-	Auth   usecase.AuthService
-	Tokens token.Manager
+	Auth     usecase.AuthService
+	Classes  usecase.ClassService
+	Sessions usecase.SessionService
+	Tokens   token.Manager
 }
 
 // Router mendaftarkan semua endpoint + Swagger UI.
@@ -37,6 +40,18 @@ func Router(h Handler) *gin.Engine {
 	authed := v1.Group("")
 	authed.Use(RequireAuth(h.Tokens))
 	authed.GET("/me", h.Me)
+
+	// --- Khusus GURU (policy: RequireRole TEACHER) ---
+	teacher := authed.Group("")
+	teacher.Use(RequireRole(domain.RoleTeacher))
+	teacher.GET("/classes", h.ListClasses)
+	teacher.GET("/classes/:id/roster", h.ClassRoster)
+
+	// Sesi kelas + join code + QR
+	teacher.POST("/sessions", h.StartSession)
+	teacher.GET("/sessions/:id", h.GetSession)
+	teacher.GET("/sessions/:id/qr", h.SessionQR)
+	teacher.POST("/sessions/:id/end", h.EndSession)
 
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginswagger.WrapHandler(swaggerfiles.Handler))

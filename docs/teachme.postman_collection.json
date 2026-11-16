@@ -1,0 +1,164 @@
+{
+  "info": {
+    "name": "TeachMe API (F01)",
+    "description": "Milestone F01: Auth, Pilih Kelas, Sesi + Join Code/QR.\n\nCara pakai:\n1. Pastikan server jalan di {{base_url}} (default http://localhost:8099).\n2. Jalankan '2. Login Guru' dulu -> access_token otomatis tersimpan.\n3. Jalankan '5. List Classes' -> class_id (Class 7B) otomatis tersimpan.\n4. Jalankan '7. Start Session' -> session_id + join_code otomatis tersimpan.\n5. Request lain tinggal Send.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8099" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "class_id", "value": "" },
+    { "key": "session_id", "value": "" },
+    { "key": "join_code", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ]
+  },
+  "item": [
+    {
+      "name": "1. Health",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "2. Login Guru",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.access_token) {",
+              "  pm.collectionVariables.set('access_token', j.access_token);",
+              "  pm.collectionVariables.set('refresh_token', j.refresh_token);",
+              "  console.log('Token tersimpan. Role:', j.roles);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"mr.axel\",\n  \"password\": \"guru123\"\n}" },
+        "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"] }
+      }
+    },
+    {
+      "name": "3. Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.access_token) pm.collectionVariables.set('access_token', j.access_token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}" },
+        "url": { "raw": "{{base_url}}/api/v1/auth/refresh", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "refresh"] }
+      }
+    },
+    {
+      "name": "4. Me (profil)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/me", "host": ["{{base_url}}"], "path": ["api", "v1", "me"] }
+      }
+    },
+    {
+      "name": "5. List Classes (pilih kelas)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const a = pm.response.json();",
+              "const b = Array.isArray(a) ? (a.find(x => x.name === 'Class 7B') || a[0]) : null;",
+              "if (b) { pm.collectionVariables.set('class_id', b.id); console.log('class_id =', b.name); }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/classes", "host": ["{{base_url}}"], "path": ["api", "v1", "classes"] }
+      }
+    },
+    {
+      "name": "6. Class Roster (daftar siswa)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/classes/{{class_id}}/roster", "host": ["{{base_url}}"], "path": ["api", "v1", "classes", "{{class_id}}", "roster"] }
+      }
+    },
+    {
+      "name": "7. Start Session (mulai kelas + kode)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.session_id) {",
+              "  pm.collectionVariables.set('session_id', j.session_id);",
+              "  pm.collectionVariables.set('join_code', j.join_code);",
+              "  console.log('Sesi dibuat. Kode:', j.join_code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"class_id\": \"{{class_id}}\"\n}" },
+        "url": { "raw": "{{base_url}}/api/v1/sessions", "host": ["{{base_url}}"], "path": ["api", "v1", "sessions"] }
+      }
+    },
+    {
+      "name": "8. Get Session (info sesi)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/sessions/{{session_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "sessions", "{{session_id}}"] }
+      }
+    },
+    {
+      "name": "9. Session QR (gambar PNG)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/sessions/{{session_id}}/qr", "host": ["{{base_url}}"], "path": ["api", "v1", "sessions", "{{session_id}}", "qr"] }
+      }
+    },
+    {
+      "name": "10. End Session (akhiri)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{base_url}}/api/v1/sessions/{{session_id}}/end", "host": ["{{base_url}}"], "path": ["api", "v1", "sessions", "{{session_id}}", "end"] }
+      }
+    }
+  ]
+}

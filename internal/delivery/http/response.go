@@ -22,6 +22,36 @@ func fail(c *gin.Context, status int, code, message string) {
 	})
 }
 
+// currentUserID mengambil ID pengguna (dari token) yang sudah disimpan middleware.
+func currentUserID(c *gin.Context) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.GetString(ctxUserID))
+	if err != nil {
+		fail(c, http.StatusUnauthorized, "UNAUTHENTICATED", "token rusak")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+// parseUUIDParam membaca parameter path (mis. :id) dan memastikan bentuk UUID.
+func parseUUIDParam(c *gin.Context, name string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param(name))
+	if err != nil {
+		fail(c, http.StatusBadRequest, "INVALID", name+" harus UUID valid")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+// parseUUID mengubah string (mis. dari body JSON) menjadi UUID.
+func parseUUID(c *gin.Context, s string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		fail(c, http.StatusBadRequest, "INVALID", "nilai bukan UUID valid")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
 // failErr memetakan error bisnis domain ke status + kode HTTP yang tepat.
 func failErr(c *gin.Context, err error) {
 	switch {
