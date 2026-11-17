@@ -66,7 +66,8 @@ func main() {
 			Tokens:  tokens,
 		},
 		Classes: usecase.ClassService{
-			Repo: postgres.ClassRepo{DB: db},
+			Repo:  postgres.ClassRepo{DB: db},
+			Users: postgres.UserRepo{DB: db},
 		},
 		Sessions: usecase.SessionService{
 			Sessions: postgres.SessionRepo{DB: db},

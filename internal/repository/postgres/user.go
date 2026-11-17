@@ -6,8 +6,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"API-techme/internal/domain"
 )
@@ -73,4 +75,33 @@ func (r UserRepo) ListTeachers(ctx context.Context) ([]domain.User, error) {
 		result = append(result, *u)
 	}
 	return result, rows.Err()
+}
+
+// CreateTeacher menyisipkan guru baru.
+//   - school_id: diambil dari sekolah pertama (demo ini hanya 1 sekolah).
+//   - username: harus unik per sekolah. Jika bentrok, otomatis ditambah angka
+//     (budi -> budi2 -> budi3 ...) sampai dapat yang kosong.
+func (r UserRepo) CreateTeacher(ctx context.Context, name, username, passwordHash string) (*domain.User, error) {
+	candidate := username
+	for attempt := 1; attempt <= 6; attempt++ {
+		row := r.DB.QueryRowContext(ctx,
+			`INSERT INTO users (school_id, name, username, password_hash, role, status)
+			 VALUES ((SELECT id FROM schools ORDER BY created_at LIMIT 1), $1, $2, $3, 'TEACHER', 'ACTIVE')
+			 RETURNING `+userCols,
+			name, candidate, passwordHash)
+
+		u, err := scanUser(row)
+		if err == nil {
+			return u, nil
+		}
+
+		// 23505 = unique_violation (username sudah dipakai) -> coba akhiran angka.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			candidate = fmt.Sprintf("%s%d", username, attempt+1)
+			continue
+		}
+		return nil, err
+	}
+	return nil, domain.ErrConflict
 }

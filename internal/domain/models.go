@@ -52,6 +52,9 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	// ListTeachers: daftar guru (untuk dropdown "pilih nama" di layar login).
 	ListTeachers(ctx context.Context) ([]User, error)
+	// CreateTeacher: tambah guru baru dari halaman "Kelola Akun".
+	// Butuh nama + username (dibuat dari nama) + hash password. school_id diisi otomatis.
+	CreateTeacher(ctx context.Context, name, username, passwordHash string) (*User, error)
 }
 
 // ---------------------------------------------------------------------------
@@ -78,4 +81,9 @@ type ClassRepository interface {
 	IsTeacherAssigned(ctx context.Context, classID, teacherID uuid.UUID) (bool, error)
 	// GetByID: ambil 1 kelas berdasarkan ID.
 	GetByID(ctx context.Context, id uuid.UUID) (*Class, error)
+	// ListAll: semua kelas di sekolah (untuk halaman "Kelola Akun & Kelas").
+	ListAll(ctx context.Context) ([]Class, error)
+	// AssignTeacher: tugaskan guru ke kelas (teacher_class_assignments).
+	// Kalau sudah pernah ditugaskan, cukup diaktifkan lagi (tidak dobel).
+	AssignTeacher(ctx context.Context, classID, teacherID uuid.UUID) error
 }

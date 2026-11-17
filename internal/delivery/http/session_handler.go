@@ -44,12 +44,12 @@ func (h Handler) StartSession(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
-		"session_id":  sess.ID,
-		"class_id":    sess.ClassID,
-		"join_code":   sess.JoinCode,              // ditampilkan board ("type the code instead")
-		"qr_payload":  usecase.QRPayload(sess.ID), // isi QR
+		"session_id":   sess.ID,
+		"class_id":     sess.ClassID,
+		"join_code":    sess.JoinCode,              // ditampilkan board ("type the code instead")
+		"qr_payload":   usecase.QRPayload(sess.ID), // isi QR
 		"qr_image_url": "/api/v1/sessions/" + sess.ID.String() + "/qr",
-		"status":      sess.Status,
+		"status":       sess.Status,
 	})
 }
 
@@ -60,9 +60,14 @@ func (h Handler) StartSession(c *gin.Context) {
 // @Security BearerAuth
 // @Param    id   path  string  true  "ID sesi (UUID)"
 // @Success  200  {object}  map[string]interface{}
+// @Failure  403  {object}  map[string]interface{}
 // @Failure  404  {object}  map[string]interface{}
 // @Router   /api/v1/sessions/{id} [get]
 func (h Handler) GetSession(c *gin.Context) {
+	teacherID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
 	id, ok := parseUUIDParam(c, "id")
 	if !ok {
 		return
@@ -70,6 +75,11 @@ func (h Handler) GetSession(c *gin.Context) {
 	sess, err := h.Sessions.Get(c.Request.Context(), id)
 	if err != nil {
 		failErr(c, err)
+		return
+	}
+	// Hanya guru pemilik yang boleh melihat sesi ini.
+	if sess.TeacherID != teacherID {
+		fail(c, http.StatusForbidden, "FORBIDDEN", "bukan pemilik sesi")
 		return
 	}
 	c.JSON(http.StatusOK, sess)

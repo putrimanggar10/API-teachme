@@ -1,8 +1,9 @@
 // Program seeder: mengisi data contoh TeachMe supaya bisa langsung dites.
 //
 // Jalankan (PowerShell):
-//   $env:DATABASE_URL="postgres://postgres:putrinadhif08%23@localhost:5432/teachme?sslmode=disable"
-//   go run ./cmd/seed
+//
+//	$env:DATABASE_URL="postgres://postgres:putrinadhif08%23@localhost:5432/teachme?sslmode=disable"
+//	go run ./cmd/seed
 //
 // CATATAN: karakter '#' pada password HARUS ditulis %23 di dalam URL.
 //
@@ -107,9 +108,9 @@ func main() {
 	insertClass(ctx, tx, classPublic, schoolID, "Public class", "")
 
 	// 6) Penugasan guru -> kelas (siapa boleh mengajar apa).
-	assign(ctx, tx, class7B, axel)   // Mr. Axel pegang 7B (Math · Class 7B di gambar)
-	assign(ctx, tx, class7A, axel)   // dan 7A
-	assign(ctx, tx, class7A, nova)   // Nova juga di 7A
+	assign(ctx, tx, class7B, axel) // Mr. Axel pegang 7B (Math · Class 7B di gambar)
+	assign(ctx, tx, class7A, axel) // dan 7A
+	assign(ctx, tx, class7A, nova) // Nova juga di 7A
 	assign(ctx, tx, classVision, vision)
 
 	// 7) Roster siswa: semua siswa contoh dimasukkan ke Class 7B.

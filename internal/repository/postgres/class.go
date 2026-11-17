@@ -26,12 +26,37 @@ func nullStr(ns sql.NullString) *string {
 // ListForTeacher: JOIN classes dengan teacher_class_assignments agar hanya
 // kelas yang di-assign ke guru tsb (dan masih aktif) yang muncul.
 func (r ClassRepo) ListForTeacher(ctx context.Context, teacherID uuid.UUID) ([]domain.Class, error) {
-	rows, err := r.DB.QueryContext(ctx, `
+	return r.queryClasses(ctx, `
 		SELECT c.id, c.school_id, c.name, c.grade, c.academic_year, c.created_at
 		FROM classes c
 		JOIN teacher_class_assignments t ON t.class_id = c.id
 		WHERE t.teacher_user_id = $1 AND t.active = TRUE
 		ORDER BY c.name`, teacherID)
+}
+
+// ListAll: semua kelas (untuk halaman "Kelola Akun & Kelas").
+func (r ClassRepo) ListAll(ctx context.Context) ([]domain.Class, error) {
+	return r.queryClasses(ctx, `
+		SELECT id, school_id, name, grade, academic_year, created_at
+		FROM classes
+		ORDER BY name`)
+}
+
+// AssignTeacher: simpan penugasan guru ke kelas.
+// ON CONFLICT: kalau pasangan (kelas, guru) sudah ada, cukup set active = TRUE lagi.
+func (r ClassRepo) AssignTeacher(ctx context.Context, classID, teacherID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO teacher_class_assignments (class_id, teacher_user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (class_id, teacher_user_id) DO UPDATE SET active = TRUE`,
+		classID, teacherID)
+	return translate(err)
+}
+
+// queryClasses menjalankan query SELECT kelas lalu membaca hasilnya jadi []domain.Class.
+// Kolom query wajib urut: id, school_id, name, grade, academic_year, created_at.
+func (r ClassRepo) queryClasses(ctx context.Context, query string, args ...any) ([]domain.Class, error) {
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, translate(err)
 	}

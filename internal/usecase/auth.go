@@ -4,6 +4,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -31,6 +33,50 @@ type AuthService struct {
 // ListTeachers: daftar guru untuk dropdown "pilih nama" di layar login.
 func (s AuthService) ListTeachers(ctx context.Context) ([]domain.User, error) {
 	return s.Users.ListTeachers(ctx)
+}
+
+// AddTeacher: tambah guru baru dari halaman "Kelola Akun".
+// Cukup nama + password. Password itulah yang nanti dipakai login.
+func (s AuthService) AddTeacher(ctx context.Context, name, password string) (*domain.User, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("%w: nama guru wajib diisi", domain.ErrInvalid)
+	}
+	if len(password) < 6 {
+		return nil, fmt.Errorf("%w: password minimal 6 karakter", domain.ErrInvalid)
+	}
+
+	// Simpan password sebagai hash bcrypt, bukan teks asli.
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.Users.CreateTeacher(ctx, name, usernameFromName(name), string(hash))
+}
+
+// usernameFromName membuat username sederhana dari nama:
+// huruf kecil, karakter non-alfanumerik jadi titik ("Bu Rina!" -> "bu.rina").
+func usernameFromName(name string) string {
+	var b strings.Builder
+	lastDot := false
+	for _, r := range strings.ToLower(name) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastDot = false
+		default:
+			if b.Len() > 0 && !lastDot {
+				b.WriteRune('.')
+				lastDot = true
+			}
+		}
+	}
+	u := strings.Trim(b.String(), ".")
+	if u == "" {
+		u = "guru"
+	}
+	return u
 }
 
 // Login: GURU pilih namanya (accountID) + password + kelas yang diajar.

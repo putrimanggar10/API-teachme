@@ -1,0 +1,392 @@
+{
+  "info": {
+    "name": "TeachMe API (F01) - Manual",
+    "description": "Versi LATIHAN: kamu INPUT SENDIRI id guru & id kelas (seperti tes beneran).\n\nLangkah:\n1. Run '1. List Accounts' -> COPY id guru dari response (mis. Mr. Axel).\n2. Buka '2. Account Classes' -> di URL, GANTI 'ISI_ID_GURU' dengan id tadi -> Send -> COPY id kelas (mis. Class 7B).\n3. Buka '3. Login' -> di Body, isi 'account_id' & 'class_id' dengan id yang kamu copy -> Send. Token tersimpan otomatis.\n4. Buka '6. Roster' / '7. Start Session' -> isi id kelas juga.\n5. Setelah '7. Start Session', session_id tersimpan otomatis untuk request 8-10.\n\nYang otomatis cuma TOKEN & session_id (biar nggak capek copy). id guru & id kelas = kamu isi sendiri.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8099"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "session_id",
+      "value": ""
+    },
+    {
+      "key": "join_code",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. Health",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Kelola Akun - Tambah Guru (opsional)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Bu Rina\",\n  \"password\": \"rahasia123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/accounts",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Kelola Kelas - Semua Kelas (copy id kelas)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/school-classes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "school-classes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Kelola Kelas - Tugaskan Guru ke Kelas (GANTI ISI_ID_GURU di URL)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/accounts/ISI_ID_GURU/classes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "ISI_ID_GURU",
+            "classes"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"class_id\": \"ISI_ID_KELAS\"\n}"
+        }
+      }
+    },
+    {
+      "name": "1. List Accounts (copy id guru)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/accounts",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. Account Classes (GANTI ISI_ID_GURU di URL)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/accounts/ISI_ID_GURU/classes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "ISI_ID_GURU",
+            "classes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Login (isi account_id & class_id di Body)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.access_token) {",
+              "  pm.collectionVariables.set('access_token', j.access_token);",
+              "  pm.collectionVariables.set('refresh_token', j.refresh_token);",
+              "  console.log('Login OK. Kelas aktif:', j.active_class && j.active_class.name);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"account_id\": \"ISI_ID_GURU_DISINI\",\n  \"password\": \"guru123\",\n  \"class_id\": \"ISI_ID_KELAS_DISINI\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Me (profil)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/me",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "me"
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. List Classes (kelas guru)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/classes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "classes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. Class Roster (GANTI ISI_ID_KELAS di URL)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/classes/ISI_ID_KELAS/roster",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "classes",
+            "ISI_ID_KELAS",
+            "roster"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Start Session (isi class_id di Body)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.session_id) {",
+              "  pm.collectionVariables.set('session_id', j.session_id);",
+              "  pm.collectionVariables.set('join_code', j.join_code);",
+              "  console.log('Sesi dibuat. Kode:', j.join_code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"class_id\": \"ISI_ID_KELAS_DISINI\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/sessions",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sessions"
+          ]
+        }
+      }
+    },
+    {
+      "name": "8. Get Session (pakai session_id otomatis)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/sessions/{{session_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sessions",
+            "{{session_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "9. Session QR (gambar PNG)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/sessions/{{session_id}}/qr",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sessions",
+            "{{session_id}}",
+            "qr"
+          ]
+        }
+      }
+    },
+    {
+      "name": "10. End Session (akhiri)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/sessions/{{session_id}}/end",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sessions",
+            "{{session_id}}",
+            "end"
+          ]
+        }
+      }
+    }
+  ]
+}

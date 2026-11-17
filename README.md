@@ -14,6 +14,7 @@ Dibangun dengan **Go + Gin + PostgreSQL**, pola **Clean Architecture**.
 | Bagian | Status |
 |--------|--------|
 | Login guru (pilih nama + password + pilih kelas) → JWT access + refresh | ✅ |
+| **Kelola Akun** → Tambah Guru (nama + password untuk login) | ✅ |
 | Policy **teacher / student** (middleware role + cek pengampu) | ✅ |
 | Database 45 tabel (schema resmi PAD) + seeder | ✅ |
 | Guru pilih kelas + daftar siswa (roster) | ✅ |
@@ -82,7 +83,10 @@ Server: `http://localhost:8099` — Swagger UI: `http://localhost:8099/swagger/i
 |--------|------|-------|------------|
 | GET  | `/health` | publik | cek server hidup |
 | GET  | `/api/v1/accounts` | publik | daftar guru (dropdown "pilih nama") |
+| POST | `/api/v1/accounts` | publik | **Kelola Akun → Tambah Guru** (`name` + `password`) |
 | GET  | `/api/v1/accounts/{id}/classes` | publik | kelas guru (dropdown "pilih kelas") |
+| POST | `/api/v1/accounts/{id}/classes` | publik | **Kelola Akun → Tugaskan guru ke kelas** (`class_id`) |
+| GET  | `/api/v1/school-classes` | publik | semua kelas (halaman Kelola Akun & Kelas) |
 | POST | `/api/v1/auth/login` | publik | login: `account_id` + `password` + `class_id` → token |
 | POST | `/api/v1/auth/refresh` | publik | tukar refresh → access baru |
 | GET  | `/api/v1/me` | login | profil pengguna |
@@ -98,6 +102,14 @@ Server: `http://localhost:8099` — Swagger UI: `http://localhost:8099/swagger/i
 2. Guru pilih namanya → `GET /accounts/{id}/classes` → tampilkan dropdown kelas
 3. Guru isi password + pilih kelas → `POST /auth/login { account_id, password, class_id }`
 4. Dapat `access_token` + `active_class`. Lalu `POST /sessions` untuk memunculkan QR + kode.
+
+### Kelola Akun (link di layar login)
+Di layar login ada link **Kelola Akun & Kelas** → daftar guru + daftar kelas.
+- **Tambah Guru:** `POST /accounts { "name": "...", "password": "..." }` → guru baru langsung muncul di dropdown login, dan password-nya dipakai untuk login. `username` dibuat otomatis dari nama (`Bu Rina` → `bu.rina`, bentrok → `bu.rina2`).
+- **Tugaskan ke Kelas:** `GET /school-classes` untuk pilih kelas, lalu `POST /accounts/{id}/classes { "class_id": "..." }`. Setelah itu guru baru bisa login memilih kelas tsb. Aman dipanggil berulang (tidak dobel).
+
+### Tes di Postman
+Import `docs/teachme.postman_collection.json` → klik kanan collection → **Run collection**. Berisi 38 request berurutan (tambah guru → tugaskan kelas → login → kelas → sesi/QR → akhiri) lengkap dengan pengecekan otomatis, termasuk tes yang memang harus ditolak (bertanda `[GAGAL]`). Semua ID & token tersimpan otomatis.
 
 ## 👤 Akun contoh (hasil seeder)
 

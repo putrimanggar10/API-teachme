@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  internal_delivery_http.assignClassInput:
+    properties:
+      class_id:
+        type: string
+    type: object
+  internal_delivery_http.createAccountInput:
+    properties:
+      name:
+        type: string
+      password:
+        type: string
+    type: object
   internal_delivery_http.loginInput:
     properties:
       account_id:
@@ -49,6 +61,32 @@ paths:
       summary: Daftar guru untuk dropdown "pilih nama" di layar login (publik)
       tags:
       - Accounts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: nama + password guru baru
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.createAccountInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Tambah guru baru (halaman "Kelola Akun", publik)
+      tags:
+      - Accounts
   /api/v1/accounts/{id}/classes:
     get:
       parameters:
@@ -69,6 +107,44 @@ paths:
             type: array
       summary: Kelas yang diajar seorang guru (untuk dropdown "pilih kelas" saat login,
         publik)
+      tags:
+      - Accounts
+    post:
+      consumes:
+      - application/json
+      description: Setelah ini guru bisa login dengan memilih kelas tsb. Aman dipanggil
+        berulang (tidak dobel).
+      parameters:
+      - description: ID guru (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: kelas yang ditugaskan
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.assignClassInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Tugaskan guru ke kelas (halaman "Kelola Akun & Kelas", publik)
       tags:
       - Accounts
   /api/v1/auth/login:
@@ -200,6 +276,21 @@ paths:
       summary: Profil pengguna yang sedang login
       tags:
       - Auth
+  /api/v1/school-classes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      summary: Semua kelas di sekolah (halaman "Kelola Akun & Kelas", publik)
+      tags:
+      - Accounts
   /api/v1/sessions:
     post:
       consumes:
@@ -242,6 +333,11 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
           schema:
             additionalProperties: true
             type: object
