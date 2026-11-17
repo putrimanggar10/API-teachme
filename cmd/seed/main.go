@@ -2,12 +2,13 @@
 //
 // Jalankan (PowerShell):
 //
-//	$env:DATABASE_URL="postgres://postgres:putrinadhif08%23@localhost:5432/teachme?sslmode=disable"
+//	$env:DATABASE_URL="postgres://postgres:PASSWORD_KAMU@localhost:5432/teachme?sslmode=disable"
 //	go run ./cmd/seed
 //
 // CATATAN: karakter '#' pada password HARUS ditulis %23 di dalam URL.
 //
 // Seeder ini AMAN diulang: ia menghapus isi tabel dulu (TRUNCATE) lalu mengisi ulang.
+// Syarat: migrations/001_init.sql dan 002_subjects.sql sudah dijalankan.
 package main
 
 import (
@@ -58,7 +59,8 @@ func main() {
 	// 1) Kosongkan semua tabel (urutan tak masalah karena CASCADE).
 	if _, err := tx.ExecContext(ctx, `
 		TRUNCATE session_invite_tokens, session_participants, class_sessions,
-		         class_enrollments, teacher_class_assignments, classes, users, schools
+		         class_enrollments, teacher_class_subjects, teacher_class_assignments,
+		         subjects, classes, users, schools
 		RESTART IDENTITY CASCADE`); err != nil {
 		log.Fatalf("truncate: %v", err)
 	}
@@ -70,7 +72,6 @@ func main() {
 		schoolID, "Sekolah Demo TeachMe")
 
 	// 3) Guru (role TEACHER). Password semua: "guru123".
-	//    (Schema resmi tak punya kolom subject; mapel di gambar belum disimpan.)
 	teacherPw := hash("guru123")
 	axel := uuid.New()
 	nova := uuid.New()
@@ -107,13 +108,26 @@ func main() {
 	insertClass(ctx, tx, classVision, schoolID, "Vision class", "")
 	insertClass(ctx, tx, classPublic, schoolID, "Public class", "")
 
-	// 6) Penugasan guru -> kelas (siapa boleh mengajar apa).
-	assign(ctx, tx, class7B, axel) // Mr. Axel pegang 7B (Math · Class 7B di gambar)
-	assign(ctx, tx, class7A, axel) // dan 7A
-	assign(ctx, tx, class7A, nova) // Nova juga di 7A
-	assign(ctx, tx, classVision, vision)
+	// 6) Mata pelajaran.
+	math := uuid.New()
+	science := uuid.New()
+	english := uuid.New()
+	bahasa := uuid.New()
+	insertSubject(ctx, tx, math, schoolID, "Math")
+	insertSubject(ctx, tx, science, schoolID, "Science")
+	insertSubject(ctx, tx, english, schoolID, "English")
+	insertSubject(ctx, tx, bahasa, schoolID, "Bahasa Indonesia")
 
-	// 7) Roster siswa: semua siswa contoh dimasukkan ke Class 7B.
+	// 7) Penugasan guru: mengajar MAPEL apa di KELAS mana.
+	//    Ini isi dropdown "Class" di layar login, mis. "Math · Class 7B".
+	assign(ctx, tx, axel, class7B, math)    // Math · Class 7B (seperti di desain)
+	assign(ctx, tx, axel, class7A, math)    // Math · Class 7A
+	assign(ctx, tx, axel, class7B, science) // Science · Class 7B (1 guru, 2 mapel di kelas yang sama)
+	assign(ctx, tx, nova, class7A, english) // English · Class 7A
+	assign(ctx, tx, sabo, class7A, bahasa)  // Bahasa Indonesia · Class 7A
+	assign(ctx, tx, vision, classVision, science)
+
+	// 8) Roster siswa: semua siswa contoh dimasukkan ke Class 7B.
 	for _, sid := range studentIDs {
 		enroll(ctx, tx, class7B, sid)
 	}
@@ -123,7 +137,8 @@ func main() {
 	}
 
 	log.Println("✅ Seed selesai.")
-	log.Println("   Login guru  -> username: mr.axel | nova | sabo | vision   (password: guru123)")
+	log.Println("   Login guru  -> Mr. Axel | Nova | Sabo | Vision (password: guru123)")
+	log.Println("   Mapel       -> Math | Science | English | Bahasa Indonesia")
 	log.Println("   Login siswa -> username: rifa | dimas | hana | maya | celine (password: siswa123)")
 }
 
@@ -155,11 +170,25 @@ func insertClass(ctx context.Context, tx *sql.Tx, id, schoolID uuid.UUID, name, 
 		id, schoolID, name, g, "2026/2027")
 }
 
-func assign(ctx context.Context, tx *sql.Tx, classID, teacherID uuid.UUID) {
+func insertSubject(ctx context.Context, tx *sql.Tx, id, schoolID uuid.UUID, name string) {
 	mustExec(ctx, tx,
-		`INSERT INTO teacher_class_assignments(id, class_id, teacher_user_id)
+		`INSERT INTO subjects(id, school_id, name) VALUES ($1,$2,$3)`,
+		id, schoolID, name)
+}
+
+// assign: guru mengajar mapel di kelas.
+// Mengisi teacher_class_assignments (guru berwenang atas kelas; dipakai policy roster/sesi)
+// dan teacher_class_subjects (mapel apa; dipakai dropdown & login).
+func assign(ctx context.Context, tx *sql.Tx, teacherID, classID, subjectID uuid.UUID) {
+	mustExec(ctx, tx,
+		`INSERT INTO teacher_class_assignments(class_id, teacher_user_id)
+		 VALUES ($1,$2)
+		 ON CONFLICT (class_id, teacher_user_id) DO NOTHING`,
+		classID, teacherID)
+	mustExec(ctx, tx,
+		`INSERT INTO teacher_class_subjects(teacher_user_id, class_id, subject_id)
 		 VALUES ($1,$2,$3)`,
-		uuid.New(), classID, teacherID)
+		teacherID, classID, subjectID)
 }
 
 func enroll(ctx context.Context, tx *sql.Tx, classID, studentID uuid.UUID) {

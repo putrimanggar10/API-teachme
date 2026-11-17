@@ -42,15 +42,100 @@ func (r ClassRepo) ListAll(ctx context.Context) ([]domain.Class, error) {
 		ORDER BY name`)
 }
 
-// AssignTeacher: simpan penugasan guru ke kelas.
-// ON CONFLICT: kalau pasangan (kelas, guru) sudah ada, cukup set active = TRUE lagi.
-func (r ClassRepo) AssignTeacher(ctx context.Context, classID, teacherID uuid.UUID) error {
-	_, err := r.DB.ExecContext(ctx, `
+// Create: tambah kelas baru di sekolah pertama (demo ini hanya 1 sekolah).
+// Tabel classes (schema resmi) tidak punya UNIQUE untuk nama, jadi pengecekan nama
+// kembar dilakukan di query: INSERT hanya terjadi kalau nama belum ada.
+// Kalau nama sudah ada, tidak ada baris yang dikembalikan -> ErrConflict.
+func (r ClassRepo) Create(ctx context.Context, name string, grade, academicYear *string) (*domain.Class, error) {
+	var c domain.Class
+	var g, y sql.NullString
+	err := r.DB.QueryRowContext(ctx, `
+		WITH sch AS (SELECT id FROM schools ORDER BY created_at LIMIT 1)
+		INSERT INTO classes (school_id, name, grade, academic_year)
+		SELECT sch.id, $1, $2, $3 FROM sch
+		WHERE NOT EXISTS (
+			SELECT 1 FROM classes x WHERE x.school_id = sch.id AND lower(x.name) = lower($1)
+		)
+		RETURNING id, school_id, name, grade, academic_year, created_at`,
+		name, grade, academicYear,
+	).Scan(&c.ID, &c.SchoolID, &c.Name, &g, &y, &c.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, domain.ErrConflict
+	}
+	if err != nil {
+		return nil, translate(err)
+	}
+	c.Grade = nullStr(g)
+	c.AcademicYear = nullStr(y)
+	return &c, nil
+}
+
+// AssignTeacher: simpan penugasan guru mengajar mapel di kelas.
+// Dua tabel diisi dalam 1 transaksi:
+//   - teacher_class_assignments: guru berwenang atas kelas (dipakai policy roster/sesi)
+//   - teacher_class_subjects   : guru mengajar mapel apa di kelas itu (dipakai login)
+//
+// ON CONFLICT: kalau sudah ada, cukup set active = TRUE lagi (tidak dobel).
+func (r ClassRepo) AssignTeacher(ctx context.Context, classID, teacherID, subjectID uuid.UUID) error {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO teacher_class_assignments (class_id, teacher_user_id)
 		VALUES ($1, $2)
 		ON CONFLICT (class_id, teacher_user_id) DO UPDATE SET active = TRUE`,
-		classID, teacherID)
-	return translate(err)
+		classID, teacherID); err != nil {
+		return translate(err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO teacher_class_subjects (teacher_user_id, class_id, subject_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (teacher_user_id, class_id, subject_id) DO UPDATE SET active = TRUE`,
+		teacherID, classID, subjectID); err != nil {
+		return translate(err)
+	}
+	return tx.Commit()
+}
+
+// ListOptionsForTeacher: pasangan mapel+kelas yang diajar guru, untuk dropdown login
+// ("Math · Class 7B"). Urut nama kelas lalu nama mapel.
+func (r ClassRepo) ListOptionsForTeacher(ctx context.Context, teacherID uuid.UUID) ([]domain.TeachingOption, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT c.id, c.name, s.id, s.name
+		FROM teacher_class_subjects t
+		JOIN classes  c ON c.id = t.class_id
+		JOIN subjects s ON s.id = t.subject_id
+		WHERE t.teacher_user_id = $1 AND t.active = TRUE
+		ORDER BY c.name, lower(s.name)`, teacherID)
+	if err != nil {
+		return nil, translate(err)
+	}
+	defer rows.Close()
+
+	result := make([]domain.TeachingOption, 0)
+	for rows.Next() {
+		var o domain.TeachingOption
+		if err := rows.Scan(&o.ClassID, &o.ClassName, &o.SubjectID, &o.SubjectName); err != nil {
+			return nil, err
+		}
+		o.Label = o.SubjectName + " · " + o.ClassName
+		result = append(result, o)
+	}
+	return result, rows.Err()
+}
+
+// IsTeachingSubject: cek guru mengajar mapel tsb di kelas tsb (masih aktif).
+func (r ClassRepo) IsTeachingSubject(ctx context.Context, teacherID, classID, subjectID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM teacher_class_subjects
+			WHERE teacher_user_id = $1 AND class_id = $2 AND subject_id = $3 AND active = TRUE
+		)`, teacherID, classID, subjectID).Scan(&exists)
+	return exists, translate(err)
 }
 
 // queryClasses menjalankan query SELECT kelas lalu membaca hasilnya jadi []domain.Class.

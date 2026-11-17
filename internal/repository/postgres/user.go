@@ -31,12 +31,12 @@ type UserRepo struct {
 }
 
 // kolom yang selalu diambil (urutannya harus sama dengan Scan di bawah).
-const userCols = `id, school_id, name, username, COALESCE(password_hash,''), role, status, created_at`
+const userCols = `id, school_id, name, username, COALESCE(password_hash,''), role, status, created_at, preferred_language`
 
 // scanUser membaca 1 baris hasil query ke struct domain.User.
 func scanUser(row interface{ Scan(...any) error }) (*domain.User, error) {
 	var u domain.User
-	err := row.Scan(&u.ID, &u.SchoolID, &u.Name, &u.Username, &u.PasswordHash, &u.Role, &u.Status, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.SchoolID, &u.Name, &u.Username, &u.PasswordHash, &u.Role, &u.Status, &u.CreatedAt, &u.PreferredLanguage)
 	if err != nil {
 		return nil, translate(err)
 	}
@@ -104,4 +104,17 @@ func (r UserRepo) CreateTeacher(ctx context.Context, name, username, passwordHas
 		return nil, err
 	}
 	return nil, domain.ErrConflict
+}
+
+// UpdateLanguage menyimpan bahasa papan pilihan user. User tidak ada -> ErrNotFound.
+func (r UserRepo) UpdateLanguage(ctx context.Context, id uuid.UUID, code string) error {
+	res, err := r.DB.ExecContext(ctx,
+		`UPDATE users SET preferred_language = $2, updated_at = now() WHERE id = $1`, id, code)
+	if err != nil {
+		return translate(err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }

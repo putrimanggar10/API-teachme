@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "TeachMe API - Tes Lengkap (E2E)",
-    "description": "Tes lengkap dari awal sampai akhir, dengan pengecekan otomatis (tab Test Results).\n\nCara pakai:\n1. Pastikan server jalan di {{base_url}} (default http://localhost:8099) dan data seed sudah diisi (go run ./cmd/seed).\n2. Klik kanan collection -> Run collection -> Run. Semua request jalan BERURUTAN.\n3. Semua ID & token disimpan otomatis ke Variables, tidak perlu copy-paste.\n\nRequest bertanda [GAGAL] memang sengaja salah; tesnya lulus kalau server MENOLAK dengan benar.\n\nCatatan: tiap run menambah 1 guru baru (Guru Tes <angka>) ke database.",
+    "description": "Tes lengkap dari awal sampai akhir, dengan pengecekan otomatis (tab Test Results).\n\nCara pakai:\n1. Pastikan server jalan di {{base_url}} (default http://localhost:8099), migrasi 001 + 002 + 003 sudah dijalankan, dan data seed sudah diisi (go run ./cmd/seed).\n2. Klik kanan collection -> Run collection -> Run. Semua request jalan BERURUTAN.\n3. Semua ID & token disimpan otomatis ke Variables, tidak perlu copy-paste.\n\nRequest bertanda [GAGAL] memang sengaja salah; tesnya lulus kalau server MENOLAK dengan benar.\n\nCatatan: tiap run menambah 1 kelas baru (Kelas Tes <angka>), 1 mapel baru (Mapel Tes <angka>) dan 1 guru baru (Guru Tes <angka>) ke database.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "name": "1. Kelola Akun & Kelas (Tambah Guru)",
+      "name": "1. Manage Accounts & Classes (Guru, Mapel, Kelas)",
       "item": [
         {
           "name": "1.1 Daftar guru (dropdown nama)",
@@ -123,7 +123,386 @@
           }
         },
         {
-          "name": "1.3 Tambah guru baru",
+          "name": "1.3 Tambah kelas baru",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nama unik tiap run, supaya collection bisa dijalankan berulang kali.",
+                  "pm.collectionVariables.set('new_class_name', 'Kelas Tes ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nama & tingkat tersimpan', () => {",
+                  "  pm.expect(j.name).to.eql(pm.collectionVariables.get('new_class_name'));",
+                  "  pm.expect(j.grade).to.eql('8');",
+                  "});",
+                  "pm.collectionVariables.set('new_class_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/school-classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "school-classes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{new_class_name}}\",\n  \"grade\": \"8\",\n  \"academic_year\": \"2026/2027\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.4 [GAGAL] Tambah kelas yang sudah ada (beda huruf besar/kecil)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Kode error = CONFLICT', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/school-classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "school-classes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"class 7b\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.5 [GAGAL] Tambah kelas nama kosong",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Kode error = INVALID', () => pm.expect(pm.response.json().error.code).to.eql('INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/school-classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "school-classes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.6 Kelas baru muncul di daftar kelas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(c => c.id);",
+                  "pm.test('Kelas baru ada di daftar', () => pm.expect(ids).to.include(pm.collectionVariables.get('new_class_id')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/school-classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "school-classes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.7 Daftar mata pelajaran",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const math = list.find(s => s.name === 'Math');",
+                  "const english = list.find(s => s.name === 'English');",
+                  "pm.test('Math & English ada (data seed)', () => { pm.expect(math).to.exist; pm.expect(english).to.exist; });",
+                  "pm.collectionVariables.set('subject_id', math.id);",
+                  "pm.collectionVariables.set('other_subject_id', english.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subjects"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "1.8 Tambah mata pelajaran baru",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nama unik tiap run, supaya collection bisa dijalankan berulang kali.",
+                  "pm.collectionVariables.set('new_subject_name', 'Mapel Tes ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Nama mapel tersimpan', () => pm.expect(j.name).to.eql(pm.collectionVariables.get('new_subject_name')));",
+                  "pm.collectionVariables.set('new_subject_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subjects"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{new_subject_name}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.9 [GAGAL] Tambah mapel yang sudah ada (beda huruf besar/kecil)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));pm.test('Kode error = CONFLICT', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subjects"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"math\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.10 [GAGAL] Tambah mapel nama kosong",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));pm.test('Kode error = INVALID', () => pm.expect(pm.response.json().error.code).to.eql('INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subjects"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.11 Tambah guru baru",
           "event": [
             {
               "listen": "prerequest",
@@ -187,7 +566,7 @@
           }
         },
         {
-          "name": "1.4 [GAGAL] Tambah guru - password terlalu pendek",
+          "name": "1.12 [GAGAL] Tambah guru - password terlalu pendek",
           "event": [
             {
               "listen": "test",
@@ -233,7 +612,7 @@
           }
         },
         {
-          "name": "1.5 [GAGAL] Tambah guru - nama kosong",
+          "name": "1.13 [GAGAL] Tambah guru - nama kosong",
           "event": [
             {
               "listen": "test",
@@ -279,7 +658,7 @@
           }
         },
         {
-          "name": "1.6 [GAGAL] Guru baru login sebelum punya kelas",
+          "name": "1.14 [GAGAL] Guru baru login sebelum punya kelas",
           "event": [
             {
               "listen": "test",
@@ -316,18 +695,18 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{new_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{new_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Password benar, tapi guru belum ditugaskan ke kelas -> 403."
+            "description": "Password benar, tapi guru belum ditugaskan mengajar apa pun -> 403."
           }
         },
         {
-          "name": "1.7 Tugaskan guru baru ke Class 7B",
+          "name": "1.15 Tugaskan guru baru: mapel baru di Class 7B",
           "event": [
             {
               "listen": "test",
@@ -336,7 +715,9 @@
                 "exec": [
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const j = pm.response.json();",
-                  "pm.test('Kelas yang ditugaskan = Class 7B', () => pm.expect(j.class.id).to.eql(pm.collectionVariables.get('class_id')));"
+                  "pm.test('Kelas = Class 7B', () => pm.expect(j.class.id).to.eql(pm.collectionVariables.get('class_id')));",
+                  "pm.test('Mapel = mapel baru', () => pm.expect(j.subject.id).to.eql(pm.collectionVariables.get('new_subject_id')));",
+                  "pm.test('Label \"Mapel · Kelas\"', () => pm.expect(j.label).to.eql(pm.collectionVariables.get('new_subject_name') + ' · Class 7B'));"
                 ]
               }
             }
@@ -367,7 +748,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -377,7 +758,7 @@
           }
         },
         {
-          "name": "1.8 Tugaskan lagi (tidak dobel)",
+          "name": "1.16 Tugaskan lagi (tidak dobel)",
           "event": [
             {
               "listen": "test",
@@ -415,7 +796,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -426,7 +807,55 @@
           }
         },
         {
-          "name": "1.9 [GAGAL] Tugaskan ke kelas yang tidak ada",
+          "name": "1.17 [GAGAL] Tugaskan tanpa mapel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));pm.test('Kode error = INVALID', () => pm.expect(pm.response.json().error.code).to.eql('INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{new_teacher_id}}/classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{new_teacher_id}}",
+                "classes"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"class_id\": \"{{class_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.18 [GAGAL] Tugaskan ke kelas yang tidak ada",
           "event": [
             {
               "listen": "test",
@@ -464,7 +893,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"class_id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+              "raw": "{\n  \"class_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -474,7 +903,55 @@
           }
         },
         {
-          "name": "1.10 [GAGAL] Tugaskan guru yang tidak ada",
+          "name": "1.19 [GAGAL] Tugaskan mapel yang tidak ada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));pm.test('Kode error = NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{new_teacher_id}}/classes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{new_teacher_id}}",
+                "classes"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "1.20 [GAGAL] Tugaskan guru yang tidak ada",
           "event": [
             {
               "listen": "test",
@@ -512,7 +989,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -522,7 +999,7 @@
           }
         },
         {
-          "name": "1.11 Kelas guru baru (dropdown pilih kelas)",
+          "name": "1.21 Pilihan \"Mapel · Kelas\" guru baru (dropdown login)",
           "event": [
             {
               "listen": "test",
@@ -531,9 +1008,11 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const list = pm.response.json();",
-                  "pm.test('Tepat 1 kelas: Class 7B', () => {",
+                  "pm.test('Tepat 1 pilihan: mapel baru · Class 7B', () => {",
                   "  pm.expect(list).to.have.lengthOf(1);",
-                  "  pm.expect(list[0].id).to.eql(pm.collectionVariables.get('class_id'));",
+                  "  pm.expect(list[0].class_id).to.eql(pm.collectionVariables.get('class_id'));",
+                  "  pm.expect(list[0].subject_id).to.eql(pm.collectionVariables.get('new_subject_id'));",
+                  "  pm.expect(list[0].label).to.eql(pm.collectionVariables.get('new_subject_name') + ' · Class 7B');",
                   "});"
                 ]
               }
@@ -561,7 +1040,7 @@
           }
         },
         {
-          "name": "1.12 Guru baru login (sekarang berhasil)",
+          "name": "1.22 Guru baru login (sekarang berhasil)",
           "event": [
             {
               "listen": "test",
@@ -571,7 +1050,8 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
                   "pm.test('Dapat token', () => pm.expect(j.access_token).to.be.a('string'));",
-                  "pm.test('User = guru baru', () => pm.expect(j.user.id).to.eql(pm.collectionVariables.get('new_teacher_id')));"
+                  "pm.test('User = guru baru', () => pm.expect(j.user.id).to.eql(pm.collectionVariables.get('new_teacher_id')));",
+                  "pm.test('Mapel aktif = mapel baru', () => pm.expect(j.active_subject.id).to.eql(pm.collectionVariables.get('new_subject_id')));"
                 ]
               }
             }
@@ -601,7 +1081,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{new_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{new_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{new_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -616,7 +1096,7 @@
       "name": "2. Login Guru (Mr. Axel)",
       "item": [
         {
-          "name": "2.1 Kelas Mr. Axel (dropdown pilih kelas)",
+          "name": "2.1 Pilihan \"Mapel · Kelas\" Mr. Axel (dropdown login)",
           "event": [
             {
               "listen": "test",
@@ -624,8 +1104,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const ids = pm.response.json().map(c => c.id);",
-                  "pm.test('Class 7B ada di daftar', () => pm.expect(ids).to.include(pm.collectionVariables.get('class_id')));"
+                  "const labels = pm.response.json().map(o => o.label);",
+                  "pm.test('Ada \"Math · Class 7B\" (seperti di desain)', () => pm.expect(labels).to.include('Math · Class 7B'));"
                 ]
               }
             }
@@ -689,7 +1169,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"salah123\",\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"salah123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -736,18 +1216,66 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{other_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{other_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Nova tidak mengajar Class 7B -> 403."
+            "description": "Nova tidak mengajar Math di Class 7B -> 403."
           }
         },
         {
-          "name": "2.4 [GAGAL] Login body tidak lengkap",
+          "name": "2.4 [GAGAL] Login ke mapel yang tidak diajar di kelas itu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));pm.test('Kode error = FORBIDDEN', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{other_subject_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Mr. Axel mengajar di Class 7B, tapi bukan English -> 403."
+          }
+        },
+        {
+          "name": "2.5 [GAGAL] Login tanpa mapel",
           "event": [
             {
               "listen": "test",
@@ -784,17 +1312,18 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{teacher_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "subject_id tidak dikirim -> 400."
           }
         },
         {
-          "name": "2.5 Login Mr. Axel",
+          "name": "2.6 Login Mr. Axel",
           "event": [
             {
               "listen": "test",
@@ -809,9 +1338,11 @@
                   "  pm.expect(j.token_type).to.eql('Bearer');",
                   "});",
                   "pm.test('Kelas aktif = Class 7B', () => pm.expect(j.active_class.id).to.eql(pm.collectionVariables.get('class_id')));",
+                  "pm.test('Mapel aktif = Math', () => pm.expect(j.active_subject.name).to.eql('Math'));",
                   "pm.test('Role = TEACHER', () => pm.expect(j.roles).to.include('TEACHER'));",
                   "pm.collectionVariables.set('access_token', j.access_token);",
-                  "pm.collectionVariables.set('refresh_token', j.refresh_token);"
+                  "pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "pm.test('Ada bahasa terakhir guru (preferred_language)', () => pm.expect(['id','en','zh','es','ar']).to.include(j.user.preferred_language));"
                 ]
               }
             }
@@ -841,7 +1372,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{class_id}}\",\n  \"subject_id\": \"{{subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -851,7 +1382,7 @@
           }
         },
         {
-          "name": "2.6 Refresh token",
+          "name": "2.7 Refresh token",
           "event": [
             {
               "listen": "test",
@@ -901,7 +1432,7 @@
           }
         },
         {
-          "name": "2.7 [GAGAL] Refresh pakai access token",
+          "name": "2.8 [GAGAL] Refresh pakai access token",
           "event": [
             {
               "listen": "test",
@@ -949,7 +1480,7 @@
           }
         },
         {
-          "name": "2.8 Me (profil)",
+          "name": "2.9 Me (profil)",
           "event": [
             {
               "listen": "test",
@@ -991,7 +1522,7 @@
           }
         },
         {
-          "name": "2.9 [GAGAL] Me tanpa token",
+          "name": "2.10 [GAGAL] Me tanpa token",
           "event": [
             {
               "listen": "test",
@@ -1025,10 +1556,306 @@
       ]
     },
     {
-      "name": "3. Pilih Kelas",
+      "name": "3. Bahasa Papan (Choose board language)",
       "item": [
         {
-          "name": "3.1 Kelas yang diajar",
+          "name": "3.1 Daftar bahasa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "pm.test('5 bahasa, urut seperti di layar', () => pm.expect(list.map(l => l.code)).to.eql(['id','en','zh','es','ar']));",
+                  "pm.test('Ada nama asli & nama Inggris', () => {",
+                  "  const zh = list.find(l => l.code === 'zh');",
+                  "  pm.expect(zh.name).to.eql('中文');",
+                  "  pm.expect(zh.english_name).to.eql('Mandarin');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/languages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "languages"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "3.2 Pilih English (tombol Continue)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tersimpan: en', () => pm.expect(pm.response.json().preferred_language).to.eql('en'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/language",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "language"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.3 Profil menunjukkan bahasa baru",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('preferred_language = en', () => pm.expect(pm.response.json().preferred_language).to.eql('en'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 [GAGAL] Bahasa tidak didukung",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Kode error = INVALID', () => pm.expect(pm.response.json().error.code).to.eql('INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/language",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "language"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"fr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.5 [GAGAL] Simpan bahasa tanpa token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/language",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "language"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"en\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.6 Kembalikan ke Bahasa Indonesia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tersimpan: id', () => pm.expect(pm.response.json().preferred_language).to.eql('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me/language",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "language"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"id\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Pilih Kelas",
+      "item": [
+        {
+          "name": "4.1 Kelas yang diajar",
           "event": [
             {
               "listen": "test",
@@ -1069,7 +1896,7 @@
           }
         },
         {
-          "name": "3.2 Daftar siswa Class 7B",
+          "name": "4.2 Daftar siswa Class 7B",
           "event": [
             {
               "listen": "test",
@@ -1113,7 +1940,7 @@
           }
         },
         {
-          "name": "3.3 [GAGAL] Siswa kelas yang tidak diajar",
+          "name": "4.3 [GAGAL] Siswa kelas yang tidak diajar",
           "event": [
             {
               "listen": "test",
@@ -1155,7 +1982,7 @@
           }
         },
         {
-          "name": "3.4 [GAGAL] ID kelas bukan UUID",
+          "name": "4.4 [GAGAL] ID kelas bukan UUID",
           "event": [
             {
               "listen": "test",
@@ -1198,10 +2025,10 @@
       ]
     },
     {
-      "name": "4. Sesi Kelas (Kode + QR)",
+      "name": "5. Sesi Kelas (Kode + QR)",
       "item": [
         {
-          "name": "4.1 Mulai sesi",
+          "name": "5.1 Mulai sesi",
           "event": [
             {
               "listen": "test",
@@ -1260,7 +2087,7 @@
           }
         },
         {
-          "name": "4.2 [GAGAL] Mulai sesi di kelas yang tidak diajar",
+          "name": "5.2 [GAGAL] Mulai sesi di kelas yang tidak diajar",
           "event": [
             {
               "listen": "test",
@@ -1313,7 +2140,7 @@
           }
         },
         {
-          "name": "4.3 Info sesi",
+          "name": "5.3 Info sesi",
           "event": [
             {
               "listen": "test",
@@ -1359,7 +2186,7 @@
           }
         },
         {
-          "name": "4.4 Gambar QR (PNG)",
+          "name": "5.4 Gambar QR (PNG)",
           "event": [
             {
               "listen": "test",
@@ -1401,7 +2228,7 @@
           }
         },
         {
-          "name": "4.5 Login guru lain (Nova, Class 7A)",
+          "name": "5.5 Login guru lain (Nova, English · Class 7A)",
           "event": [
             {
               "listen": "test",
@@ -1439,18 +2266,18 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"account_id\": \"{{other_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{other_class_id}}\"\n}",
+              "raw": "{\n  \"account_id\": \"{{other_teacher_id}}\",\n  \"password\": \"guru123\",\n  \"class_id\": \"{{other_class_id}}\",\n  \"subject_id\": \"{{other_subject_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Untuk mengetes bahwa guru lain TIDAK bisa mengakses sesi Mr. Axel."
+            "description": "Nova login English · Class 7A, untuk mengetes bahwa guru lain TIDAK bisa mengakses sesi Mr. Axel."
           }
         },
         {
-          "name": "4.6 [GAGAL] Guru lain lihat sesi",
+          "name": "5.6 [GAGAL] Guru lain lihat sesi",
           "event": [
             {
               "listen": "test",
@@ -1490,7 +2317,7 @@
           }
         },
         {
-          "name": "4.7 [GAGAL] Guru lain ambil QR",
+          "name": "5.7 [GAGAL] Guru lain ambil QR",
           "event": [
             {
               "listen": "test",
@@ -1531,7 +2358,7 @@
           }
         },
         {
-          "name": "4.8 [GAGAL] Guru lain akhiri sesi",
+          "name": "5.8 [GAGAL] Guru lain akhiri sesi",
           "event": [
             {
               "listen": "test",
@@ -1572,7 +2399,7 @@
           }
         },
         {
-          "name": "4.9 Akhiri sesi",
+          "name": "5.9 Akhiri sesi",
           "event": [
             {
               "listen": "test",
@@ -1614,7 +2441,7 @@
           }
         },
         {
-          "name": "4.10 [GAGAL] Akhiri sesi dua kali",
+          "name": "5.10 [GAGAL] Akhiri sesi dua kali",
           "event": [
             {
               "listen": "test",
@@ -1655,7 +2482,7 @@
           }
         },
         {
-          "name": "4.11 Cek sesi sudah berakhir",
+          "name": "5.11 Cek sesi sudah berakhir",
           "event": [
             {
               "listen": "test",
@@ -1700,7 +2527,7 @@
           }
         },
         {
-          "name": "4.12 [GAGAL] Sesi tidak ada",
+          "name": "5.12 [GAGAL] Sesi tidak ada",
           "event": [
             {
               "listen": "test",
@@ -1764,6 +2591,22 @@
       "value": ""
     },
     {
+      "key": "subject_id",
+      "value": ""
+    },
+    {
+      "key": "other_subject_id",
+      "value": ""
+    },
+    {
+      "key": "new_subject_name",
+      "value": ""
+    },
+    {
+      "key": "new_subject_id",
+      "value": ""
+    },
+    {
       "key": "new_teacher_name",
       "value": ""
     },
@@ -1789,6 +2632,14 @@
     },
     {
       "key": "join_code",
+      "value": ""
+    },
+    {
+      "key": "new_class_name",
+      "value": ""
+    },
+    {
+      "key": "new_class_id",
       "value": ""
     }
   ]

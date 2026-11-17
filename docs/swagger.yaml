@@ -4,12 +4,31 @@ definitions:
     properties:
       class_id:
         type: string
+      subject_id:
+        type: string
     type: object
   internal_delivery_http.createAccountInput:
     properties:
       name:
         type: string
       password:
+        type: string
+    type: object
+  internal_delivery_http.createClassInput:
+    properties:
+      academic_year:
+        example: 2026/2027
+        type: string
+      grade:
+        example: "8"
+        type: string
+      name:
+        example: Class 8C
+        type: string
+    type: object
+  internal_delivery_http.createSubjectInput:
+    properties:
+      name:
         type: string
     type: object
   internal_delivery_http.loginInput:
@@ -20,10 +39,13 @@ definitions:
         type: string
       password:
         type: string
+      subject_id:
+        type: string
     required:
     - account_id
     - class_id
     - password
+    - subject_id
     type: object
   internal_delivery_http.refreshInput:
     properties:
@@ -31,6 +53,12 @@ definitions:
         type: string
     required:
     - refresh_token
+    type: object
+  internal_delivery_http.setLanguageInput:
+    properties:
+      language:
+        example: en
+        type: string
     type: object
   internal_delivery_http.startSessionInput:
     properties:
@@ -89,6 +117,8 @@ paths:
       - Accounts
   /api/v1/accounts/{id}/classes:
     get:
+      description: Tiap item = 1 pasangan mapel+kelas, mis. label "Math · Class 7B".
+        Kirim class_id + subject_id-nya saat login.
       parameters:
       - description: ID guru (UUID)
         in: path
@@ -105,14 +135,14 @@ paths:
               additionalProperties: true
               type: object
             type: array
-      summary: Kelas yang diajar seorang guru (untuk dropdown "pilih kelas" saat login,
+      summary: Pilihan "Mapel · Kelas" seorang guru (dropdown "Class" saat login,
         publik)
       tags:
       - Accounts
     post:
       consumes:
       - application/json
-      description: Setelah ini guru bisa login dengan memilih kelas tsb. Aman dipanggil
+      description: Setelah ini guru bisa login memilih "Mapel · Kelas" tsb. Aman dipanggil
         berulang (tidak dobel).
       parameters:
       - description: ID guru (UUID)
@@ -120,7 +150,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: kelas yang ditugaskan
+      - description: kelas + mapel yang ditugaskan
         in: body
         name: body
         required: true
@@ -144,7 +174,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Tugaskan guru ke kelas (halaman "Kelola Akun & Kelas", publik)
+      summary: Tugaskan guru mengajar mapel di kelas (halaman "Manage accounts & classes",
+        publik)
       tags:
       - Accounts
   /api/v1/auth/login:
@@ -256,6 +287,23 @@ paths:
       summary: Daftar siswa pada sebuah kelas (khusus guru pengampu)
       tags:
       - Classes
+  /api/v1/languages:
+    get:
+      description: Urut seperti di layar. Tampilkan `name` sebagai judul dan `english_name`
+        sebagai keterangan kecil.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      summary: Daftar bahasa papan (layar "Choose board language", publik)
+      tags:
+      - Languages
   /api/v1/me:
     get:
       produces:
@@ -276,6 +324,42 @@ paths:
       summary: Profil pengguna yang sedang login
       tags:
       - Auth
+  /api/v1/me/language:
+    put:
+      consumes:
+      - application/json
+      description: Dipanggil saat menekan "Continue". Pilihan ini ikut terkirim saat
+        login berikutnya (user.preferred_language).
+      parameters:
+      - description: 'kode bahasa: id, en, zh, es, ar'
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.setLanguageInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Simpan bahasa papan pilihan pengguna yang sedang login
+      tags:
+      - Languages
   /api/v1/school-classes:
     get:
       produces:
@@ -288,7 +372,38 @@ paths:
               additionalProperties: true
               type: object
             type: array
-      summary: Semua kelas di sekolah (halaman "Kelola Akun & Kelas", publik)
+      summary: Semua kelas di sekolah (halaman "Manage accounts & classes", publik)
+      tags:
+      - Accounts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: nama kelas (wajib), tingkat & tahun ajaran (opsional)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.createClassInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: nama kelas sudah ada
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Tambah kelas baru (halaman "Manage accounts & classes", publik)
       tags:
       - Accounts
   /api/v1/sessions:
@@ -402,6 +517,52 @@ paths:
       summary: Gambar QR untuk bergabung ke sesi (PNG)
       tags:
       - Sessions
+  /api/v1/subjects:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      summary: Daftar mata pelajaran (halaman "Manage accounts & classes", publik)
+      tags:
+      - Subjects
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: nama mapel, mis. Math
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http.createSubjectInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: nama mapel sudah ada
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Tambah mata pelajaran (halaman "Manage accounts & classes", publik)
+      tags:
+      - Subjects
 securityDefinitions:
   BearerAuth:
     in: header

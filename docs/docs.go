@@ -79,13 +79,14 @@ const docTemplate = `{
         },
         "/api/v1/accounts/{id}/classes": {
             "get": {
+                "description": "Tiap item = 1 pasangan mapel+kelas, mis. label \"Math · Class 7B\". Kirim class_id + subject_id-nya saat login.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Accounts"
                 ],
-                "summary": "Kelas yang diajar seorang guru (untuk dropdown \"pilih kelas\" saat login, publik)",
+                "summary": "Pilihan \"Mapel · Kelas\" seorang guru (dropdown \"Class\" saat login, publik)",
                 "parameters": [
                     {
                         "type": "string",
@@ -109,7 +110,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Setelah ini guru bisa login dengan memilih kelas tsb. Aman dipanggil berulang (tidak dobel).",
+                "description": "Setelah ini guru bisa login memilih \"Mapel · Kelas\" tsb. Aman dipanggil berulang (tidak dobel).",
                 "consumes": [
                     "application/json"
                 ],
@@ -119,7 +120,7 @@ const docTemplate = `{
                 "tags": [
                     "Accounts"
                 ],
-                "summary": "Tugaskan guru ke kelas (halaman \"Kelola Akun \u0026 Kelas\", publik)",
+                "summary": "Tugaskan guru mengajar mapel di kelas (halaman \"Manage accounts \u0026 classes\", publik)",
                 "parameters": [
                     {
                         "type": "string",
@@ -129,7 +130,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "kelas yang ditugaskan",
+                        "description": "kelas + mapel yang ditugaskan",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -331,6 +332,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/languages": {
+            "get": {
+                "description": "Urut seperti di layar. Tampilkan ` + "`" + `name` + "`" + ` sebagai judul dan ` + "`" + `english_name` + "`" + ` sebagai keterangan kecil.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Daftar bahasa papan (layar \"Choose board language\", publik)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me": {
             "get": {
                 "security": [
@@ -363,6 +388,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/me/language": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Dipanggil saat menekan \"Continue\". Pilihan ini ikut terkirim saat login berikutnya (user.preferred_language).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Languages"
+                ],
+                "summary": "Simpan bahasa papan pilihan pengguna yang sedang login",
+                "parameters": [
+                    {
+                        "description": "kode bahasa: id, en, zh, es, ar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_delivery_http.setLanguageInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/school-classes": {
             "get": {
                 "produces": [
@@ -371,7 +450,7 @@ const docTemplate = `{
                 "tags": [
                     "Accounts"
                 ],
-                "summary": "Semua kelas di sekolah (halaman \"Kelola Akun \u0026 Kelas\", publik)",
+                "summary": "Semua kelas di sekolah (halaman \"Manage accounts \u0026 classes\", publik)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -381,6 +460,52 @@ const docTemplate = `{
                                 "type": "object",
                                 "additionalProperties": true
                             }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "summary": "Tambah kelas baru (halaman \"Manage accounts \u0026 classes\", publik)",
+                "parameters": [
+                    {
+                        "description": "nama kelas (wajib), tingkat \u0026 tahun ajaran (opsional)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_delivery_http.createClassInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "nama kelas sudah ada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -560,6 +685,75 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/subjects": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subjects"
+                ],
+                "summary": "Daftar mata pelajaran (halaman \"Manage accounts \u0026 classes\", publik)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subjects"
+                ],
+                "summary": "Tambah mata pelajaran (halaman \"Manage accounts \u0026 classes\", publik)",
+                "parameters": [
+                    {
+                        "description": "nama mapel, mis. Math",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_delivery_http.createSubjectInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "nama mapel sudah ada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -567,6 +761,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "class_id": {
+                    "type": "string"
+                },
+                "subject_id": {
                     "type": "string"
                 }
             }
@@ -582,12 +779,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_delivery_http.createClassInput": {
+            "type": "object",
+            "properties": {
+                "academic_year": {
+                    "type": "string",
+                    "example": "2026/2027"
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "8"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Class 8C"
+                }
+            }
+        },
+        "internal_delivery_http.createSubjectInput": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_delivery_http.loginInput": {
             "type": "object",
             "required": [
                 "account_id",
                 "class_id",
-                "password"
+                "password",
+                "subject_id"
             ],
             "properties": {
                 "account_id": {
@@ -597,6 +820,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                },
+                "subject_id": {
                     "type": "string"
                 }
             }
@@ -609,6 +835,15 @@ const docTemplate = `{
             "properties": {
                 "refresh_token": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_delivery_http.setLanguageInput": {
+            "type": "object",
+            "properties": {
+                "language": {
+                    "type": "string",
+                    "example": "en"
                 }
             }
         },

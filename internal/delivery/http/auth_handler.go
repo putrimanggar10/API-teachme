@@ -13,11 +13,13 @@ import (
 // Bentuk input (request body)
 // ---------------------------------------------------------------------------
 
-// loginInput: guru pilih namanya (account_id), ketik password, pilih kelas.
+// loginInput: guru pilih namanya (account_id), ketik password, pilih "Mapel · Kelas"
+// (dari dropdown: class_id + subject_id).
 type loginInput struct {
 	AccountID string `json:"account_id" binding:"required"`
 	Password  string `json:"password" binding:"required"`
 	ClassID   string `json:"class_id" binding:"required"`
+	SubjectID string `json:"subject_id" binding:"required"`
 }
 
 type refreshInput struct {
@@ -27,13 +29,14 @@ type refreshInput struct {
 // authResponse = bentuk balasan login/refresh.
 func authResponse(c *gin.Context, status int, r *usecase.AuthResult) {
 	c.JSON(status, gin.H{
-		"access_token":  r.AccessToken,
-		"refresh_token": r.RefreshToken,
-		"token_type":    "Bearer",
-		"expires_in":    r.ExpiresIn,
-		"user":          r.User,
-		"active_class":  r.ActiveClass, // kelas yang dipilih saat login (null saat refresh)
-		"roles":         []string{r.User.Role},
+		"access_token":   r.AccessToken,
+		"refresh_token":  r.RefreshToken,
+		"token_type":     "Bearer",
+		"expires_in":     r.ExpiresIn,
+		"user":           r.User,
+		"active_class":   r.ActiveClass,   // kelas yang dipilih saat login (null saat refresh)
+		"active_subject": r.ActiveSubject, // mapel yang dipilih saat login (null saat refresh)
+		"roles":          []string{r.User.Role},
 	})
 }
 
@@ -60,7 +63,11 @@ func (h Handler) Login(c *gin.Context) {
 	if !ok {
 		return
 	}
-	res, err := h.Auth.Login(c.Request.Context(), accountID, in.Password, classID)
+	subjectID, ok := parseUUID(c, in.SubjectID)
+	if !ok {
+		return
+	}
+	res, err := h.Auth.Login(c.Request.Context(), accountID, in.Password, classID, subjectID)
 	if err != nil {
 		failErr(c, err)
 		return

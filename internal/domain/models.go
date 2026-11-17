@@ -40,8 +40,9 @@ type User struct {
 	Role      string    `json:"role"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
-	// Catatan: schema resmi `users` TIDAK punya kolom subject/mapel.
-	// "Mr. Axel · Math" di gambar belum ada tempat simpannya — gap yang dicatat.
+	// PreferredLanguage = bahasa papan pilihan terakhir (kode: id, en, zh, es, ar).
+	// Kolom tambahan dari migrations/003_user_language.sql.
+	PreferredLanguage string `json:"preferred_language,omitempty"`
 
 	PasswordHash string `json:"-"` // rahasia: hanya dipakai internal saat verifikasi login
 }
@@ -55,6 +56,8 @@ type UserRepository interface {
 	// CreateTeacher: tambah guru baru dari halaman "Kelola Akun".
 	// Butuh nama + username (dibuat dari nama) + hash password. school_id diisi otomatis.
 	CreateTeacher(ctx context.Context, name, username, passwordHash string) (*User, error)
+	// UpdateLanguage: simpan bahasa papan pilihan user.
+	UpdateLanguage(ctx context.Context, id uuid.UUID, code string) error
 }
 
 // ---------------------------------------------------------------------------
@@ -81,9 +84,16 @@ type ClassRepository interface {
 	IsTeacherAssigned(ctx context.Context, classID, teacherID uuid.UUID) (bool, error)
 	// GetByID: ambil 1 kelas berdasarkan ID.
 	GetByID(ctx context.Context, id uuid.UUID) (*Class, error)
-	// ListAll: semua kelas di sekolah (untuk halaman "Kelola Akun & Kelas").
+	// ListAll: semua kelas di sekolah (untuk halaman "Manage accounts & classes").
 	ListAll(ctx context.Context) ([]Class, error)
-	// AssignTeacher: tugaskan guru ke kelas (teacher_class_assignments).
+	// Create: tambah kelas baru. Nama sudah ada (tanpa peduli huruf besar/kecil) -> ErrConflict.
+	Create(ctx context.Context, name string, grade, academicYear *string) (*Class, error)
+	// AssignTeacher: tugaskan guru mengajar MAPEL di KELAS.
+	// Mengisi teacher_class_assignments + teacher_class_subjects.
 	// Kalau sudah pernah ditugaskan, cukup diaktifkan lagi (tidak dobel).
-	AssignTeacher(ctx context.Context, classID, teacherID uuid.UUID) error
+	AssignTeacher(ctx context.Context, classID, teacherID, subjectID uuid.UUID) error
+	// ListOptionsForTeacher: pasangan mapel+kelas yang diajar guru (dropdown login).
+	ListOptionsForTeacher(ctx context.Context, teacherID uuid.UUID) ([]TeachingOption, error)
+	// IsTeachingSubject: apakah guru mengajar mapel tsb di kelas tsb (untuk login).
+	IsTeachingSubject(ctx context.Context, teacherID, classID, subjectID uuid.UUID) (bool, error)
 }

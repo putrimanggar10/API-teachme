@@ -16,18 +16,20 @@ import (
 
 // AuthResult = hasil login: data user + sepasang token + kelas yang dipilih.
 type AuthResult struct {
-	User         *domain.User
-	ActiveClass  *domain.Class // kelas yang dipilih saat login
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int // detik, masa berlaku access token
+	User          *domain.User
+	ActiveClass   *domain.Class   // kelas yang dipilih saat login
+	ActiveSubject *domain.Subject // mapel yang dipilih saat login
+	AccessToken   string
+	RefreshToken  string
+	ExpiresIn     int // detik, masa berlaku access token
 }
 
 // AuthService mengurus login, refresh token, dan ambil profil.
 type AuthService struct {
-	Users   domain.UserRepository
-	Classes domain.ClassRepository // untuk cek guru mengajar kelas yang dipilih
-	Tokens  token.Manager
+	Users    domain.UserRepository
+	Classes  domain.ClassRepository   // untuk cek guru mengajar mapel+kelas yang dipilih
+	Subjects domain.SubjectRepository // untuk data mapel aktif
+	Tokens   token.Manager
 }
 
 // ListTeachers: daftar guru untuk dropdown "pilih nama" di layar login.
@@ -79,9 +81,9 @@ func usernameFromName(name string) string {
 	return u
 }
 
-// Login: GURU pilih namanya (accountID) + password + kelas yang diajar.
-// Validasi: password benar, role TEACHER, dan guru memang mengajar kelas itu.
-func (s AuthService) Login(ctx context.Context, accountID uuid.UUID, password string, classID uuid.UUID) (*AuthResult, error) {
+// Login: GURU pilih namanya (accountID) + password + "Mapel · Kelas" yang diajar.
+// Validasi: password benar, role TEACHER, dan guru memang mengajar mapel itu di kelas itu.
+func (s AuthService) Login(ctx context.Context, accountID uuid.UUID, password string, classID, subjectID uuid.UUID) (*AuthResult, error) {
 	user, err := s.Users.GetByID(ctx, accountID)
 	if err != nil {
 		if err == domain.ErrNotFound {
@@ -103,8 +105,8 @@ func (s AuthService) Login(ctx context.Context, accountID uuid.UUID, password st
 		return nil, domain.ErrForbidden
 	}
 
-	// Pastikan guru ini memang mengajar kelas yang dipilih.
-	ok, err := s.Classes.IsTeacherAssigned(ctx, classID, accountID)
+	// Pastikan guru ini memang mengajar mapel yang dipilih di kelas yang dipilih.
+	ok, err := s.Classes.IsTeachingSubject(ctx, accountID, classID, subjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +118,17 @@ func (s AuthService) Login(ctx context.Context, accountID uuid.UUID, password st
 	if err != nil {
 		return nil, err
 	}
+	subject, err := s.Subjects.GetByID(ctx, subjectID)
+	if err != nil {
+		return nil, err
+	}
 
 	res, err := s.issueTokens(user)
 	if err != nil {
 		return nil, err
 	}
 	res.ActiveClass = class
+	res.ActiveSubject = subject
 	return res, nil
 }
 
@@ -148,6 +155,26 @@ func (s AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthRes
 		return nil, domain.ErrInvalidCredentials
 	}
 	return s.issueTokens(user)
+}
+
+// SetLanguage: simpan bahasa papan pilihan user (layar "Choose board language").
+// Kode harus salah satu dari domain.Languages, kalau tidak -> ErrInvalid.
+func (s AuthService) SetLanguage(ctx context.Context, userID uuid.UUID, code string) (*domain.Language, error) {
+	code = strings.ToLower(strings.TrimSpace(code))
+	var lang *domain.Language
+	for i := range domain.Languages {
+		if domain.Languages[i].Code == code {
+			lang = &domain.Languages[i]
+			break
+		}
+	}
+	if lang == nil {
+		return nil, fmt.Errorf("%w: bahasa %q tidak didukung (pilih: id, en, zh, es, ar)", domain.ErrInvalid, code)
+	}
+	if err := s.Users.UpdateLanguage(ctx, userID, lang.Code); err != nil {
+		return nil, err
+	}
+	return lang, nil
 }
 
 // Me mengembalikan profil user berdasarkan ID (dari token).

@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "TeachMe API (F01) - Manual",
+    "name": "TeachMe API - Manual",
     "description": "Versi LATIHAN: kamu INPUT SENDIRI id guru & id kelas (seperti tes beneran).\n\nLangkah:\n1. Run '1. List Accounts' -> COPY id guru dari response (mis. Mr. Axel).\n2. Buka '2. Account Classes' -> di URL, GANTI 'ISI_ID_GURU' dengan id tadi -> Send -> COPY id kelas (mis. Class 7B).\n3. Buka '3. Login' -> di Body, isi 'account_id' & 'class_id' dengan id yang kamu copy -> Send. Token tersimpan otomatis.\n4. Buka '6. Roster' / '7. Start Session' -> isi id kelas juga.\n5. Setelah '7. Start Session', session_id tersimpan otomatis untuk request 8-10.\n\nYang otomatis cuma TOKEN & session_id (biar nggak capek copy). id guru & id kelas = kamu isi sendiri.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -57,7 +57,7 @@
       }
     },
     {
-      "name": "Kelola Akun - Tambah Guru (opsional)",
+      "name": "Kelola - Tambah Guru",
       "request": {
         "auth": {
           "type": "noauth"
@@ -87,7 +87,7 @@
       }
     },
     {
-      "name": "Kelola Kelas - Semua Kelas (copy id kelas)",
+      "name": "Kelola - Semua Kelas (copy id kelas)",
       "request": {
         "auth": {
           "type": "noauth"
@@ -108,7 +108,93 @@
       }
     },
     {
-      "name": "Kelola Kelas - Tugaskan Guru ke Kelas (GANTI ISI_ID_GURU di URL)",
+      "name": "Kelola - Tambah Kelas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/school-classes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "school-classes"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Class 8C\",\n  \"grade\": \"8\",\n  \"academic_year\": \"2026/2027\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Kelola - Daftar Mata Pelajaran (copy id mapel)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/subjects",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "subjects"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Kelola - Tambah Mata Pelajaran",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/subjects",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "subjects"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Biology\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Kelola - Tugaskan Guru: Mapel + Kelas (GANTI ISI_ID_GURU di URL)",
       "request": {
         "auth": {
           "type": "noauth"
@@ -135,7 +221,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"class_id\": \"ISI_ID_KELAS\"\n}"
+          "raw": "{\n  \"class_id\": \"ISI_ID_KELAS\",\n  \"subject_id\": \"ISI_ID_MAPEL\"\n}"
         }
       }
     },
@@ -161,7 +247,7 @@
       }
     },
     {
-      "name": "2. Account Classes (GANTI ISI_ID_GURU di URL)",
+      "name": "2. Pilihan \"Mapel · Kelas\" guru (GANTI ISI_ID_GURU di URL, copy class_id & subject_id)",
       "request": {
         "auth": {
           "type": "noauth"
@@ -184,7 +270,7 @@
       }
     },
     {
-      "name": "3. Login (isi account_id & class_id di Body)",
+      "name": "3. Login (isi account_id, class_id & subject_id di Body)",
       "event": [
         {
           "listen": "test",
@@ -214,7 +300,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"account_id\": \"ISI_ID_GURU_DISINI\",\n  \"password\": \"guru123\",\n  \"class_id\": \"ISI_ID_KELAS_DISINI\"\n}"
+          "raw": "{\n  \"account_id\": \"ISI_ID_GURU\",\n  \"password\": \"guru123\",\n  \"class_id\": \"ISI_ID_KELAS\",\n  \"subject_id\": \"ISI_ID_MAPEL\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/auth/login",
@@ -245,6 +331,70 @@
             "v1",
             "me"
           ]
+        }
+      }
+    },
+    {
+      "name": "4a. Daftar Bahasa (Choose board language)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/languages",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "languages"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    },
+    {
+      "name": "4b. Simpan Bahasa Pilihan (pakai token)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/me/language",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "me",
+            "language"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"language\": \"en\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         }
       }
     },

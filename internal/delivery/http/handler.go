@@ -18,6 +18,7 @@ type Handler struct {
 	Auth     usecase.AuthService
 	Classes  usecase.ClassService
 	Sessions usecase.SessionService
+	Subjects usecase.SubjectService
 	Tokens   token.Manager
 }
 
@@ -37,8 +38,12 @@ func Router(h Handler) *gin.Engine {
 	v1.GET("/accounts", h.ListAccounts)
 	v1.POST("/accounts", h.CreateAccount) // halaman "Kelola Akun": tambah guru
 	v1.GET("/accounts/:id/classes", h.AccountClasses)
-	v1.POST("/accounts/:id/classes", h.AssignClass) // halaman "Kelola Akun & Kelas": tugaskan guru ke kelas
-	v1.GET("/school-classes", h.ListAllClasses)     // halaman "Kelola Akun & Kelas": semua kelas
+	v1.POST("/accounts/:id/classes", h.AssignClass) // halaman "Manage accounts & classes": tugaskan guru (mapel + kelas)
+	v1.GET("/school-classes", h.ListAllClasses)     // halaman "Manage accounts & classes": semua kelas
+	v1.POST("/school-classes", h.CreateClass)       // halaman "Manage accounts & classes": tambah kelas
+	v1.GET("/subjects", h.ListSubjects)             // halaman "Manage accounts & classes": semua mapel
+	v1.POST("/subjects", h.CreateSubject)           // halaman "Manage accounts & classes": tambah mapel
+	v1.GET("/languages", h.ListLanguages)           // layar "Choose board language"
 	v1.POST("/auth/login", h.Login)
 	v1.POST("/auth/refresh", h.Refresh)
 
@@ -46,6 +51,7 @@ func Router(h Handler) *gin.Engine {
 	authed := v1.Group("")
 	authed.Use(RequireAuth(h.Tokens))
 	authed.GET("/me", h.Me)
+	authed.PUT("/me/language", h.SetMyLanguage) // simpan bahasa papan pilihan
 
 	// --- Khusus GURU (policy: RequireRole TEACHER) ---
 	teacher := authed.Group("")
